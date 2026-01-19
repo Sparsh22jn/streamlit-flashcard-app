@@ -7,7 +7,86 @@ to generate educational flashcards on any topic.
 """
 
 import streamlit as st
+import os
 from database import init_database
+
+# ═══════════════════════════════════════════════════════════════
+# AUTHENTICATION - Protect your API credits!
+# ═══════════════════════════════════════════════════════════════
+
+def check_password():
+    """Returns `True` if the user had the correct password."""
+    
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        # Get password from environment variable or Streamlit secrets
+        correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
+        
+        if not correct_password:
+            # No password set - allow access (for local development)
+            st.session_state["password_correct"] = True
+            return
+            
+        if st.session_state.get("password_input") == correct_password:
+            st.session_state["password_correct"] = True
+            del st.session_state["password_input"]  # Don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    # First run or password not yet verified
+    if "password_correct" not in st.session_state:
+        # Check if password is required
+        correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
+        if not correct_password:
+            # No password configured - skip authentication
+            return True
+            
+        # Show password input
+        st.markdown("""
+        <div style='text-align: center; padding: 50px 0;'>
+            <h1>🔐 Flashcard App</h1>
+            <p>This app requires authentication.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.text_input(
+            "Password", 
+            type="password", 
+            on_change=password_entered, 
+            key="password_input",
+            placeholder="Enter password to access the app"
+        )
+        st.markdown("---")
+        st.caption("💡 Contact the app owner for access credentials.")
+        return False
+    
+    # Password was entered previously
+    if not st.session_state.get("password_correct", False):
+        # Password incorrect
+        st.markdown("""
+        <div style='text-align: center; padding: 50px 0;'>
+            <h1>🔐 Flashcard App</h1>
+            <p>This app requires authentication.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.text_input(
+            "Password", 
+            type="password", 
+            on_change=password_entered, 
+            key="password_input",
+            placeholder="Enter password to access the app"
+        )
+        st.error("😕 Password incorrect. Please try again.")
+        return False
+    
+    # Password correct
+    return True
+
+
+# Check authentication before showing anything
+if not check_password():
+    st.stop()
 
 # Initialize database on startup
 init_database()
@@ -143,7 +222,7 @@ st.markdown("---")
 # Footer
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px 0;'>
-    <p>Built with ❤️ using Streamlit and Claude AI</p>
+    <p>Built with ❤️ using Streamlit and Google Gemini AI</p>
     <p style='font-size: 0.8em;'>© 2026 Streamlit Flashcard App for Complex Topics</p>
 </div>
 """, unsafe_allow_html=True)

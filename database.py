@@ -49,9 +49,16 @@ def init_database():
             last_reviewed_at TIMESTAMP,
             explanation_eli5 TEXT,
             explanation_eli10 TEXT,
+            mnemonic TEXT,
             FOREIGN KEY (cardset_id) REFERENCES cardsets (cardset_id)
         )
     """)
+    
+    # Add mnemonic column if it doesn't exist (for existing databases)
+    try:
+        cursor.execute("ALTER TABLE flashcards ADD COLUMN mnemonic TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     
     conn.commit()
     conn.close()
@@ -285,6 +292,54 @@ def get_explanation(card_id: int, explanation_type: str) -> Optional[str]:
     return None
 
 
+def save_mnemonic(card_id: int, mnemonic_text: str):
+    """
+    Save a mnemonic for a flashcard.
+    
+    Args:
+        card_id: The ID of the flashcard
+        mnemonic_text: The mnemonic text
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        UPDATE flashcards
+        SET mnemonic = ?
+        WHERE id = ?
+    """, (mnemonic_text, card_id))
+    
+    conn.commit()
+    conn.close()
+
+
+def get_mnemonic(card_id: int) -> Optional[str]:
+    """
+    Get an existing mnemonic for a flashcard.
+    
+    Args:
+        card_id: The ID of the flashcard
+    
+    Returns:
+        The mnemonic text or None if not found
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT mnemonic
+        FROM flashcards
+        WHERE id = ?
+    """, (card_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row and row[0]:
+        return row[0]
+    return None
+
+
 def delete_cardset(cardset_id: str):
     """
     Delete a cardset and all its flashcards.
@@ -303,3 +358,236 @@ def delete_cardset(cardset_id: str):
     
     conn.commit()
     conn.close()
+
+
+# ============================================
+# Spaced Repetition Functions (Anki-style)
+# ============================================
+
+def init_spaced_repetition_table():
+    """Initialize the spaced repetition tracking table."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS card_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id INTEGER UNIQUE NOT NULL,
+            ease_factor REAL DEFAULT 2.5,
+            interval_days INTEGER DEFAULT 0,
+            repetitions INTEGER DEFAULT 0,
+            next_review_date TEXT,
+            last_review_date TEXT,
+            FOREIGN KEY (card_id) REFERENCES flashcards (id)
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+
+
+def get_card_progress(card_id: int) -> Optional[Dict]:
+    """Get spaced repetition progress for a card."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT * FROM card_progress WHERE card_id = ?
+    """, (card_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return dict(row)
+    return None
+
+
+def update_card_progress(card_id: int, rating: str) -> Dict:
+    """
+    Update card progress based on user rating (Anki SM-2 algorithm).
+    
+    Args:
+        card_id: The flashcard ID
+        rating: One of 'again', 'hard', 'good', 'easy'
+    
+    Returns:
+        Dict with new interval and next review date
+    """
+    from datetime import datetime, timedelta
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Get existing progress or create new
+    cursor.execute("SELECT * FROM card_progress WHERE card_id = ?", (card_id,))
+    row = cursor.fetchone()
+    
+    if row:
+        progress = dict(row)
+    else:
+        progress = {
+            'card_id': card_id,
+            'ease_factor': 2.5,
+            'interval_days': 0,
+            'repetitions': 0
+        }
+    
+    # SM-2 Algorithm implementation
+    ease_factor = progress['ease_factor']
+    interval = progress['interval_days']
+    reps = progress['repetitions']
+    
+    # Rating multipliers and ease adjustments
+    if rating == 'again':
+        # Failed - reset to beginning
+        interval = 0  # Will show again in same session or next minute
+        ease_factor = max(1.3, ease_factor - 0.2)
+        reps = 0
+        next_interval_minutes = 1  # Show again in 1 minute
+    elif rating == 'hard':
+        # Struggled but got it
+        if interval == 0:
+            interval = 1
+        else:
+            interval = max(1, int(interval * 1.2))
+        ease_factor = max(1.3, ease_factor - 0.15)
+        reps += 1
+        next_interval_minutes = interval * 24 * 60
+    elif rating == 'good':
+        # Normal recall
+        if reps == 0:
+            interval = 1
+        elif reps == 1:
+            interval = 6
+        else:
+            interval = int(interval * ease_factor)
+        reps += 1
+        next_interval_minutes = interval * 24 * 60
+    elif rating == 'easy':
+        # Easy recall - bonus interval
+        if reps == 0:
+            interval = 4
+        elif reps == 1:
+            interval = 10
+        else:
+            interval = int(interval * ease_factor * 1.3)
+        ease_factor = min(3.0, ease_factor + 0.15)
+        reps += 1
+        next_interval_minutes = interval * 24 * 60
+    
+    # Calculate next review date
+    now = datetime.now()
+    if rating == 'again':
+        next_review = now + timedelta(minutes=1)
+    else:
+        next_review = now + timedelta(days=interval)
+    
+    # Upsert progress
+    cursor.execute("""
+        INSERT INTO card_progress (card_id, ease_factor, interval_days, repetitions, next_review_date, last_review_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(card_id) DO UPDATE SET
+            ease_factor = excluded.ease_factor,
+            interval_days = excluded.interval_days,
+            repetitions = excluded.repetitions,
+            next_review_date = excluded.next_review_date,
+            last_review_date = excluded.last_review_date
+    """, (card_id, ease_factor, interval, reps, next_review.isoformat(), now.isoformat()))
+    
+    conn.commit()
+    conn.close()
+    
+    # Also update the flashcards table
+    update_review_stats(card_id)
+    
+    return {
+        'interval_days': interval,
+        'ease_factor': ease_factor,
+        'next_review': next_review.isoformat(),
+        'repetitions': reps
+    }
+
+
+def get_next_intervals(card_id: int) -> Dict[str, str]:
+    """
+    Get the next interval for each rating option.
+    
+    Returns:
+        Dict with 'again', 'hard', 'good', 'easy' intervals as strings
+    """
+    progress = get_card_progress(card_id)
+    
+    if not progress:
+        # New card defaults
+        return {
+            'again': '<1m',
+            'hard': '1d',
+            'good': '1d',
+            'easy': '4d'
+        }
+    
+    ease = progress['ease_factor']
+    interval = progress['interval_days']
+    reps = progress['repetitions']
+    
+    def format_interval(days):
+        if days == 0:
+            return '<1m'
+        elif days == 1:
+            return '1d'
+        elif days < 30:
+            return f'{days}d'
+        elif days < 365:
+            months = days // 30
+            return f'{months}mo'
+        else:
+            years = days / 365
+            return f'{years:.1f}y'
+    
+    # Calculate intervals for each option
+    if reps == 0:
+        again_int, hard_int, good_int, easy_int = 0, 1, 1, 4
+    elif reps == 1:
+        again_int = 0
+        hard_int = max(1, int(interval * 1.2))
+        good_int = 6
+        easy_int = 10
+    else:
+        again_int = 0
+        hard_int = max(1, int(interval * 1.2))
+        good_int = int(interval * ease)
+        easy_int = int(interval * ease * 1.3)
+    
+    return {
+        'again': format_interval(again_int),
+        'hard': format_interval(hard_int),
+        'good': format_interval(good_int),
+        'easy': format_interval(easy_int)
+    }
+
+
+def get_due_cards(cardset_id: str) -> List[Dict]:
+    """Get cards that are due for review."""
+    from datetime import datetime
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    now = datetime.now().isoformat()
+    
+    # Get cards that are due or new (no progress entry)
+    cursor.execute("""
+        SELECT f.*, cp.next_review_date, cp.interval_days, cp.ease_factor, cp.repetitions
+        FROM flashcards f
+        LEFT JOIN card_progress cp ON f.id = cp.card_id
+        WHERE f.cardset_id = ?
+        AND (cp.next_review_date IS NULL OR cp.next_review_date <= ?)
+        ORDER BY cp.next_review_date ASC NULLS FIRST
+    """, (cardset_id, now))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+

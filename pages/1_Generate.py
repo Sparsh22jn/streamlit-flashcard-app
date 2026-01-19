@@ -4,9 +4,27 @@ Allows users to create new flashcard sets using AI.
 """
 
 import streamlit as st
+import os
 from database import init_database, create_cardset, save_flashcards_bulk, get_all_cardsets
 from flashcard_generator import generate_flashcards
 from utils import validate_topic, get_complexity_emoji
+
+# Authentication check
+def check_auth():
+    """Check if user is authenticated."""
+    # Get password from environment variable or Streamlit secrets
+    correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
+    
+    # If no password is set, allow access
+    if not correct_password:
+        return True
+    
+    # Check if already authenticated in this session
+    return st.session_state.get("password_correct", False)
+
+if not check_auth():
+    st.warning("🔐 Please login from the main page first.")
+    st.stop()
 
 # Initialize database
 init_database()
@@ -88,6 +106,11 @@ if submitted:
                 # Success message
                 st.success(f"✅ Successfully generated {len(flashcards)} flashcards!")
                 st.info(f"📋 Cardset ID: `{cardset_id}`")
+                
+                # Show cost information
+                if "cost_info" in result:
+                    cost = result["cost_info"]
+                    st.caption(f"💰 Cost: ${cost['this_call']:.4f} | Total spent: ${cost['total_spent']:.2f} | Remaining: ${cost['remaining_budget']:.2f}")
                 
                 # Display generated flashcards
                 st.markdown("---")

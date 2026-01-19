@@ -1,27 +1,30 @@
 # 🎴 Streamlit Flashcard App for Complex Topics
 
-A Streamlit-based flashcard application that uses AI (Claude API) to generate educational flashcards on any topic. Perfect for learning complex subjects with personalized study materials.
+A Streamlit-based flashcard application that uses AI (Claude 3.5 Sonnet) to generate educational flashcards on any topic. Features Anki-style spaced repetition, ELI5 explanations, and memory mnemonics.
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)
+![Claude](https://img.shields.io/badge/Claude-3.5_Sonnet-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## ✨ Features
 
-- **🤖 AI-Powered Generation**: Create flashcards on any topic using Claude AI
+- **🤖 AI-Powered Generation**: Create comprehensive flashcards using Claude 3.5 Sonnet
 - **📚 Multiple Complexity Levels**: Beginner, Intermediate, and Advanced options
-- **🔄 Interactive Review**: Flip cards to reveal answers with smooth UI
-- **🧒 ELI5/ELI10 Explanations**: Get simplified explanations for any concept
+- **🔄 Anki-Style Review**: Spaced repetition with Again/Hard/Good/Easy ratings
+- **🧒 ELI5 Explanations**: Get simple, child-friendly explanations for any concept
+- **🧠 Memory Mnemonics**: AI-generated memory tricks using proven techniques
+- **💰 Cost Tracking**: Built-in spending limit protection for API costs
+- **🔐 Password Protection**: Secure your deployed app from unauthorized use
 - **💾 Persistent Storage**: All flashcards saved to SQLite database
 - **📱 Mobile Friendly**: Works great on phones and tablets
-- **☁️ Cloud Ready**: Easy deployment to Streamlit Cloud
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Python 3.8 or higher
-- Anthropic API key ([Get one here](https://console.anthropic.com/))
+- Anthropic Claude API key ([Get one here](https://console.anthropic.com/))
 
 ### Installation
 
@@ -52,8 +55,10 @@ A Streamlit-based flashcard application that uses AI (Claude API) to generate ed
    # Copy the example file
    cp .env.example .env
    
-   # Edit .env and add your Anthropic API key
+   # Edit .env and add your settings
    ANTHROPIC_API_KEY=your_api_key_here
+   SPENDING_LIMIT=10.00
+   APP_PASSWORD=your_secure_password  # Optional for local dev
    ```
 
 5. **Run the app**
@@ -79,9 +84,10 @@ A Streamlit-based flashcard application that uses AI (Claude API) to generate ed
 
 1. Go to the **Review** page from the sidebar
 2. Select a flashcard set from the dropdown
-3. Click **Show Answer** to flip the card
-4. Use **Previous** and **Next** to navigate
-5. Click **ELI5** or **ELI10** for simpler explanations
+3. Click **Tap to Reveal Answer** to see the answer
+4. Rate your recall: **Again** / **Hard** / **Good** / **Easy**
+5. Use **⬅️ ELI5** for simple explanations
+6. Use **🧠 Memory Trick** for mnemonics
 
 ## 🗂️ Project Structure
 
@@ -124,15 +130,61 @@ streamlit-flashcard-app/
 
 ## ☁️ Deployment to Streamlit Cloud
 
-1. Push your code to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io/)
-3. Connect your GitHub account
+### Step 1: Push to GitHub
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/yourusername/streamlit-flashcard-app.git
+git push -u origin main
+```
+
+### Step 2: Deploy on Streamlit Cloud
+
+1. Go to [share.streamlit.io](https://share.streamlit.io/)
+2. Sign in with GitHub
+3. Click "New app"
 4. Select your repository
-5. Add your `ANTHROPIC_API_KEY` in Secrets:
-   ```toml
-   ANTHROPIC_API_KEY = "your_api_key_here"
-   ```
-6. Deploy!
+5. Set main file path: `app.py`
+
+### Step 3: Configure Secrets (⚠️ IMPORTANT!)
+
+In Streamlit Cloud, go to **App Settings** → **Secrets** and add:
+
+```toml
+ANTHROPIC_API_KEY = "sk-ant-api03-your-key-here"
+SPENDING_LIMIT = "10.00"
+APP_PASSWORD = "your_secure_password_here"
+```
+
+> ⚠️ **NEVER commit your `.env` file!** Always use Streamlit Secrets for deployment.
+
+### Step 4: Share Securely
+
+- Only share the password with trusted users
+- Monitor your Anthropic dashboard for usage
+- Adjust `SPENDING_LIMIT` as needed
+
+## 💰 Cost Management
+
+The app includes built-in cost protection:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `SPENDING_LIMIT` | Max USD to spend on API | $10.00 |
+
+**Approximate costs (Claude 3.5 Sonnet):**
+- Generating 10 flashcards: ~$0.02-0.05
+- ELI5 explanation: ~$0.005
+- Memory mnemonic: ~$0.005
+
+## 🔐 Authentication
+
+When `APP_PASSWORD` is set:
+- Users must enter password to access any page
+- Protects your API credits from unauthorized use
+- Leave empty for local development (no password required)
 
 ## 📱 Mobile Access
 
@@ -150,22 +202,14 @@ Deploy to Streamlit Cloud for access from anywhere!
 ### Environment Variables
 | Variable | Description | Required |
 |----------|-------------|----------|
-| ANTHROPIC_API_KEY | Your Anthropic API key | Yes |
+| `ANTHROPIC_API_KEY` | Your Claude API key | Yes |
+| `SPENDING_LIMIT` | Max spend in USD | No (default: $10) |
+| `APP_PASSWORD` | Password for app access | No (recommended for deploy) |
 
 ### Customization
-- Edit `utils.py` to change card styling
-- Modify prompts in `flashcard_generator.py` for different card formats
+- Edit prompts in `flashcard_generator.py` for different card formats
+- Modify spaced repetition algorithm in `database.py`
 - Adjust UI components in page files
-
-## 📝 Sample Topics
-
-- Python list comprehensions
-- World War II major events
-- Photosynthesis process
-- Machine learning basics
-- Spanish irregular verbs
-- Quantum computing fundamentals
-- Data structures and algorithms
 
 ## 🐛 Troubleshooting
 
@@ -187,6 +231,11 @@ pip install -r requirements.txt
 streamlit run app.py --server.port 8502
 ```
 
+**"Could not parse flashcards" error**
+- The AI response format was unexpected
+- Try generating again with a simpler topic
+- Check your API key has sufficient credits
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -200,6 +249,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Streamlit](https://streamlit.io/) - The amazing web framework
 - [Anthropic](https://anthropic.com/) - Claude AI for flashcard generation
 - [SQLite](https://sqlite.org/) - Lightweight database
+- [SuperMemo](https://supermemo.com/) - Spaced repetition research
 
 ---
 
