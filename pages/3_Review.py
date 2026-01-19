@@ -3,6 +3,7 @@ Review Flashcards - With Dark Mode & Swipe Gestures
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 from database import (
     init_database, 
@@ -348,40 +349,48 @@ def get_theme_css():
 
 st.markdown(get_theme_css(), unsafe_allow_html=True)
 
-# Swipe gesture JavaScript (touch, mouse, keyboard)
-st.markdown("""
+# Swipe gesture JavaScript (touch, mouse, keyboard) - using components.html for JS execution
+components.html("""
 <script>
 (function() {
+    // Wait for page to fully load
+    if (window.swipeInitialized) return;
+    window.swipeInitialized = true;
+    
     let startX = 0;
     let isDragging = false;
-    const minSwipeDistance = 80;
+    const minSwipeDistance = 50;
+    
+    // Get parent document (Streamlit's iframe parent)
+    const doc = window.parent.document;
     
     // Touch events (mobile)
-    document.addEventListener('touchstart', e => {
+    doc.addEventListener('touchstart', e => {
         startX = e.changedTouches[0].screenX;
-    }, false);
+    }, {passive: true});
     
-    document.addEventListener('touchend', e => {
+    doc.addEventListener('touchend', e => {
         const endX = e.changedTouches[0].screenX;
         handleSwipe(endX - startX);
-    }, false);
+    }, {passive: true});
     
     // Mouse events (desktop drag)
-    document.addEventListener('mousedown', e => {
+    doc.addEventListener('mousedown', e => {
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
         startX = e.screenX;
         isDragging = true;
-    }, false);
+    });
     
-    document.addEventListener('mouseup', e => {
+    doc.addEventListener('mouseup', e => {
         if (isDragging) {
             const endX = e.screenX;
             handleSwipe(endX - startX);
             isDragging = false;
         }
-    }, false);
+    });
     
     // Keyboard events
-    document.addEventListener('keydown', e => {
+    doc.addEventListener('keydown', e => {
         // Prevent if typing in input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
@@ -389,7 +398,7 @@ st.markdown("""
             case ' ':  // Space = Show answer / Flip
             case 'Enter':
                 e.preventDefault();
-                const showBtn = Array.from(document.querySelectorAll('button')).find(b => 
+                const showBtn = Array.from(doc.querySelectorAll('button')).find(b => 
                     b.textContent.includes('Show Answer') || b.textContent.includes('Flip'));
                 if (showBtn) showBtn.click();
                 break;
@@ -418,10 +427,10 @@ st.markdown("""
                 clickButton('Hard');
                 break;
         }
-    }, false);
+    });
     
     function clickButton(text) {
-        const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes(text));
+        const btn = Array.from(doc.querySelectorAll('button')).find(b => b.textContent.includes(text));
         if (btn) btn.click();
     }
     
@@ -436,9 +445,11 @@ st.markdown("""
             clickButton('Again');
         }
     }
+    
+    console.log('Smart FlashCards: Gestures initialized');
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
 
 # Initialize session state
 if 'current_card_index' not in st.session_state:
