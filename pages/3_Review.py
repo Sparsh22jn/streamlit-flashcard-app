@@ -348,37 +348,92 @@ def get_theme_css():
 
 st.markdown(get_theme_css(), unsafe_allow_html=True)
 
-# Swipe gesture JavaScript
+# Swipe gesture JavaScript (touch, mouse, keyboard)
 st.markdown("""
 <script>
 (function() {
-    let touchStartX = 0;
-    let touchEndX = 0;
-    const minSwipeDistance = 50;
+    let startX = 0;
+    let isDragging = false;
+    const minSwipeDistance = 80;
     
+    // Touch events (mobile)
     document.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
+        startX = e.changedTouches[0].screenX;
     }, false);
     
     document.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
+        const endX = e.changedTouches[0].screenX;
+        handleSwipe(endX - startX);
     }, false);
     
-    function handleSwipe() {
-        const swipeDistance = touchEndX - touchStartX;
+    // Mouse events (desktop drag)
+    document.addEventListener('mousedown', e => {
+        startX = e.screenX;
+        isDragging = true;
+    }, false);
+    
+    document.addEventListener('mouseup', e => {
+        if (isDragging) {
+            const endX = e.screenX;
+            handleSwipe(endX - startX);
+            isDragging = false;
+        }
+    }, false);
+    
+    // Keyboard events
+    document.addEventListener('keydown', e => {
+        // Prevent if typing in input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
-        if (Math.abs(swipeDistance) < minSwipeDistance) return;
+        switch(e.key) {
+            case ' ':  // Space = Show answer / Flip
+            case 'Enter':
+                e.preventDefault();
+                const showBtn = Array.from(document.querySelectorAll('button')).find(b => 
+                    b.textContent.includes('Show Answer') || b.textContent.includes('Flip'));
+                if (showBtn) showBtn.click();
+                break;
+            case '1':  // 1 = Again
+                clickButton('Again');
+                break;
+            case '2':  // 2 = Hard
+                clickButton('Hard');
+                break;
+            case '3':  // 3 = Good
+                clickButton('Good');
+                break;
+            case '4':  // 4 = Easy
+                clickButton('Easy');
+                break;
+            case 'ArrowLeft':  // Left arrow = Again
+                clickButton('Again');
+                break;
+            case 'ArrowRight':  // Right arrow = Good
+                clickButton('Good');
+                break;
+            case 'ArrowUp':  // Up arrow = Easy
+                clickButton('Easy');
+                break;
+            case 'ArrowDown':  // Down arrow = Hard
+                clickButton('Hard');
+                break;
+        }
+    }, false);
+    
+    function clickButton(text) {
+        const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes(text));
+        if (btn) btn.click();
+    }
+    
+    function handleSwipe(distance) {
+        if (Math.abs(distance) < minSwipeDistance) return;
         
-        if (swipeDistance > 0) {
-            // Swipe right - Got it (Good)
-            const goodBtn = document.querySelector('button[kind="secondary"]:nth-of-type(3)') || 
-                           Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Good'));
-            if (goodBtn) goodBtn.click();
+        if (distance > 0) {
+            // Swipe right - Good
+            clickButton('Good');
         } else {
-            // Swipe left - Review again
-            const againBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Again'));
-            if (againBtn) againBtn.click();
+            // Swipe left - Again
+            clickButton('Again');
         }
     }
 })();
@@ -505,10 +560,10 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    # Swipe hint for mobile
+    # Controls hint
     st.markdown("""
     <div class="swipe-hint">
-        👈 Swipe left = Again &nbsp;|&nbsp; Swipe right = Good 👉
+        ⌨️ <b>Space</b> flip • <b>1-4</b> or <b>←↓↑→</b> rate • 🖱️ Drag or 📱 Swipe
     </div>
     """, unsafe_allow_html=True)
     
