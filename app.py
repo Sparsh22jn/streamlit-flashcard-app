@@ -83,14 +83,47 @@ def check_password():
 
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 2: API KEY INPUT
+# STEP 2: API KEY INPUT WITH VALIDATION
 # ═══════════════════════════════════════════════════════════════
+
+def validate_api_key(api_key: str) -> tuple[bool, str]:
+    """
+    Validate the Claude API key by making a minimal API call.
+    
+    Returns:
+        Tuple of (is_valid, message)
+    """
+    import anthropic
+    
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        # Make a minimal API call to validate the key
+        # Using a tiny prompt to minimize cost (~$0.0001)
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=5,
+            messages=[{"role": "user", "content": "Hi"}]
+        )
+        return True, "✅ API key is valid!"
+    except anthropic.AuthenticationError:
+        return False, "❌ Invalid API key. Please check and try again."
+    except anthropic.PermissionDeniedError:
+        return False, "❌ API key doesn't have permission. Check your Anthropic account."
+    except anthropic.RateLimitError:
+        return False, "⚠️ Rate limited. The key seems valid but you've hit usage limits."
+    except anthropic.APIStatusError as e:
+        if "credit" in str(e).lower() or "balance" in str(e).lower():
+            return False, "❌ No credits remaining on this API key. Please add credits at console.anthropic.com"
+        return False, f"❌ API Error: {str(e)}"
+    except Exception as e:
+        return False, f"❌ Connection error: {str(e)}"
+
 
 def check_api_key():
     """Returns `True` if user has provided a valid API key."""
     
-    # Check if API key is already in session
-    if st.session_state.get("user_api_key"):
+    # Check if API key is already in session and validated
+    if st.session_state.get("user_api_key") and st.session_state.get("api_key_validated"):
         return True
     
     # Show API key input page
@@ -111,7 +144,7 @@ def check_api_key():
     2. **Sign up or Log in** to your account
     3. **Navigate to API Keys**: Click on "API Keys" in the sidebar
     4. **Create a new key**: Click "Create Key" and copy it
-    5. **Paste below** and click "Save & Continue"
+    5. **Paste below** and click "Validate & Continue"
     
     > 💡 **Note**: You'll be charged based on your own API usage. 
     > The app has a built-in spending limit to protect you.
@@ -140,16 +173,24 @@ def check_api_key():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        if st.button("✅ Save & Continue", type="primary", use_container_width=True):
-            if api_key and api_key.startswith("sk-ant-"):
-                st.session_state["user_api_key"] = api_key
-                st.session_state["user_spending_limit"] = spending_limit
-                st.success("✅ API Key saved! Redirecting...")
-                st.rerun()
-            elif api_key:
+        if st.button("✅ Validate & Continue", type="primary", use_container_width=True):
+            if not api_key:
+                st.error("❌ Please enter your API key")
+            elif not api_key.startswith("sk-ant-"):
                 st.error("❌ Invalid API key format. It should start with 'sk-ant-'")
             else:
-                st.error("❌ Please enter your API key")
+                # Validate the API key
+                with st.spinner("🔄 Validating API key..."):
+                    is_valid, message = validate_api_key(api_key)
+                
+                if is_valid:
+                    st.session_state["user_api_key"] = api_key
+                    st.session_state["user_spending_limit"] = spending_limit
+                    st.session_state["api_key_validated"] = True
+                    st.success(message + " Redirecting...")
+                    st.rerun()
+                else:
+                    st.error(message)
     
     with col2:
         st.link_button("🔗 Get API Key", "https://console.anthropic.com/", use_container_width=True)
@@ -162,6 +203,22 @@ def check_api_key():
     It is never saved to any database or server. When you close the browser, 
     the key is gone.
     """)
+    
+    # Common issues
+    with st.expander("❓ Common Issues"):
+        st.markdown("""
+        **"Invalid API key"**
+        - Make sure you copied the entire key (starts with `sk-ant-api03-`)
+        - Check that you're using a Claude API key, not OpenAI
+        
+        **"No credits remaining"**
+        - Go to [console.anthropic.com](https://console.anthropic.com/)
+        - Add credits to your account under Billing
+        
+        **"Permission denied"**
+        - Your API key may have been revoked
+        - Create a new key in the Anthropic console
+        """)
     
     return False
 
