@@ -26,14 +26,17 @@ from utils import get_complexity_emoji
 
 # Authentication check
 def check_auth():
-    """Check if user is authenticated."""
+    """Check if user is authenticated and has API key."""
     correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
-    if not correct_password:
-        return True
-    return st.session_state.get("password_correct", False)
+    if correct_password and not st.session_state.get("password_correct", False):
+        st.warning("🔐 Please login from the main page first.")
+        return False
+    if not st.session_state.get("user_api_key"):
+        st.warning("🔑 Please enter your API key on the main page first.")
+        return False
+    return True
 
 if not check_auth():
-    st.warning("🔐 Please login from the main page first.")
     st.stop()
 
 # Initialize database

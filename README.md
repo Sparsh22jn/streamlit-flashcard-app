@@ -10,6 +10,7 @@ A Streamlit-based flashcard application that uses AI (Claude 3.5 Sonnet) to gene
 ## ✨ Features
 
 - **🤖 AI-Powered Generation**: Create comprehensive flashcards using Claude 3.5 Sonnet
+- **� BYOK (Bring Your Own Key)**: Users enter their own API key - no shared credits!
 - **📚 Multiple Complexity Levels**: Beginner, Intermediate, and Advanced options
 - **🔄 Anki-Style Review**: Spaced repetition with Again/Hard/Good/Easy ratings
 - **🧒 ELI5 Explanations**: Get simple, child-friendly explanations for any concept
@@ -55,10 +56,8 @@ A Streamlit-based flashcard application that uses AI (Claude 3.5 Sonnet) to gene
    # Copy the example file
    cp .env.example .env
    
-   # Edit .env and add your settings
-   ANTHROPIC_API_KEY=your_api_key_here
-   SPENDING_LIMIT=10.00
-   APP_PASSWORD=your_secure_password  # Optional for local dev
+   # Edit .env and set a password (API key is entered in the app!)
+   APP_PASSWORD=your_secure_password
    ```
 
 5. **Run the app**
@@ -68,8 +67,16 @@ A Streamlit-based flashcard application that uses AI (Claude 3.5 Sonnet) to gene
 
 6. **Open in browser**
    - Navigate to `http://localhost:8501`
+   - Enter password (if set)
+   - Enter your Claude API key
+   - Start learning!
 
 ## 📖 How to Use
+
+### First Time Setup
+1. **Enter password** (if configured)
+2. **Enter your Claude API key** - Get one at [console.anthropic.com](https://console.anthropic.com/)
+3. **Set your spending limit** - Protect yourself from unexpected costs
 
 ### Generating Flashcards
 
@@ -148,29 +155,28 @@ git push -u origin main
 4. Select your repository
 5. Set main file path: `app.py`
 
-### Step 3: Configure Secrets (⚠️ IMPORTANT!)
+### Step 3: Configure Secrets (Only Password Needed!)
 
 In Streamlit Cloud, go to **App Settings** → **Secrets** and add:
 
 ```toml
-ANTHROPIC_API_KEY = "sk-ant-api03-your-key-here"
-SPENDING_LIMIT = "10.00"
 APP_PASSWORD = "your_secure_password_here"
 ```
 
-> ⚠️ **NEVER commit your `.env` file!** Always use Streamlit Secrets for deployment.
+> 🎉 **No API key needed in secrets!** Each user enters their own Claude API key in the app.
 
 ### Step 4: Share Securely
 
-- Only share the password with trusted users
-- Monitor your Anthropic dashboard for usage
-- Adjust `SPENDING_LIMIT` as needed
+- Share the password with trusted users
+- Each user uses their OWN API key and credits
+- You pay $0 for other users' API usage!
 
 ## 💰 Cost Management
 
-The app includes built-in cost protection:
-
-| Setting | Description | Default |
+**BYOK Model (Bring Your Own Key):**
+- Each user enters their own Claude API key
+- Each user sets their own spending limit
+- You (the app owner) pay nothing for API costs!
 |---------|-------------|---------|
 | `SPENDING_LIMIT` | Max USD to spend on API | $10.00 |
 

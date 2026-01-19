@@ -10,42 +10,44 @@ import streamlit as st
 import os
 from database import init_database
 
+# App configuration - MUST be first Streamlit command
+st.set_page_config(
+    page_title="Flashcard App for Complex Topics",
+    page_icon="🎴",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
 # ═══════════════════════════════════════════════════════════════
-# AUTHENTICATION - Protect your API credits!
+# STEP 1: PASSWORD AUTHENTICATION
 # ═══════════════════════════════════════════════════════════════
 
 def check_password():
-    """Returns `True` if the user had the correct password."""
+    """Returns `True` if the user has the correct password."""
     
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        # Get password from environment variable or Streamlit secrets
         correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
         
         if not correct_password:
-            # No password set - allow access (for local development)
             st.session_state["password_correct"] = True
             return
             
         if st.session_state.get("password_input") == correct_password:
             st.session_state["password_correct"] = True
-            del st.session_state["password_input"]  # Don't store password
+            del st.session_state["password_input"]
         else:
             st.session_state["password_correct"] = False
 
-    # First run or password not yet verified
     if "password_correct" not in st.session_state:
-        # Check if password is required
         correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
         if not correct_password:
-            # No password configured - skip authentication
             return True
             
-        # Show password input
         st.markdown("""
-        <div style='text-align: center; padding: 50px 0;'>
-            <h1>🔐 Flashcard App</h1>
-            <p>This app requires authentication.</p>
+        <div style='text-align: center; padding: 30px 0;'>
+            <h1>🎴 Flashcard App</h1>
+            <h3>🔐 Authentication Required</h3>
         </div>
         """, unsafe_allow_html=True)
         
@@ -56,17 +58,14 @@ def check_password():
             key="password_input",
             placeholder="Enter password to access the app"
         )
-        st.markdown("---")
         st.caption("💡 Contact the app owner for access credentials.")
         return False
     
-    # Password was entered previously
     if not st.session_state.get("password_correct", False):
-        # Password incorrect
         st.markdown("""
-        <div style='text-align: center; padding: 50px 0;'>
-            <h1>🔐 Flashcard App</h1>
-            <p>This app requires authentication.</p>
+        <div style='text-align: center; padding: 30px 0;'>
+            <h1>🎴 Flashcard App</h1>
+            <h3>🔐 Authentication Required</h3>
         </div>
         """, unsafe_allow_html=True)
         
@@ -80,24 +79,107 @@ def check_password():
         st.error("😕 Password incorrect. Please try again.")
         return False
     
-    # Password correct
     return True
 
 
-# Check authentication before showing anything
+# ═══════════════════════════════════════════════════════════════
+# STEP 2: API KEY INPUT
+# ═══════════════════════════════════════════════════════════════
+
+def check_api_key():
+    """Returns `True` if user has provided a valid API key."""
+    
+    # Check if API key is already in session
+    if st.session_state.get("user_api_key"):
+        return True
+    
+    # Show API key input page
+    st.markdown("""
+    <div style='text-align: center; padding: 20px 0;'>
+        <h1>🎴 Flashcard App</h1>
+        <h3>🔑 Enter Your Claude API Key</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Instructions
+    st.markdown("""
+    ### How to Get Your API Key
+    
+    1. **Go to Anthropic Console**: [console.anthropic.com](https://console.anthropic.com/)
+    2. **Sign up or Log in** to your account
+    3. **Navigate to API Keys**: Click on "API Keys" in the sidebar
+    4. **Create a new key**: Click "Create Key" and copy it
+    5. **Paste below** and click "Save & Continue"
+    
+    > 💡 **Note**: You'll be charged based on your own API usage. 
+    > The app has a built-in spending limit to protect you.
+    """)
+    
+    st.markdown("---")
+    
+    # API Key input
+    api_key = st.text_input(
+        "🔑 Claude API Key",
+        type="password",
+        placeholder="sk-ant-api03-...",
+        help="Your API key starts with 'sk-ant-api03-'"
+    )
+    
+    # Spending limit input
+    spending_limit = st.number_input(
+        "💰 Spending Limit (USD)",
+        min_value=1.0,
+        max_value=100.0,
+        value=5.0,
+        step=1.0,
+        help="The app will stop generating when this limit is reached"
+    )
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if st.button("✅ Save & Continue", type="primary", use_container_width=True):
+            if api_key and api_key.startswith("sk-ant-"):
+                st.session_state["user_api_key"] = api_key
+                st.session_state["user_spending_limit"] = spending_limit
+                st.success("✅ API Key saved! Redirecting...")
+                st.rerun()
+            elif api_key:
+                st.error("❌ Invalid API key format. It should start with 'sk-ant-'")
+            else:
+                st.error("❌ Please enter your API key")
+    
+    with col2:
+        st.link_button("🔗 Get API Key", "https://console.anthropic.com/", use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Security note
+    st.info("""
+    🔒 **Security Note**: Your API key is stored only in your browser session. 
+    It is never saved to any database or server. When you close the browser, 
+    the key is gone.
+    """)
+    
+    return False
+
+
+# ═══════════════════════════════════════════════════════════════
+# MAIN APP FLOW
+# ═══════════════════════════════════════════════════════════════
+
+# Step 1: Check password
 if not check_password():
     st.stop()
 
-# Initialize database on startup
-init_database()
+# Step 2: Check API key
+if not check_api_key():
+    st.stop()
 
-# App configuration
-st.set_page_config(
-    page_title="Flashcard App for Complex Topics",
-    page_icon="🎴",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
+# Step 3: Initialize database and show main app
+init_database()
 
 # Custom CSS for the app
 st.markdown("""
@@ -222,7 +304,18 @@ st.markdown("---")
 # Footer
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px 0;'>
-    <p>Built with ❤️ using Streamlit and Google Gemini AI</p>
+    <p>Built with ❤️ using Streamlit and Claude AI</p>
     <p style='font-size: 0.8em;'>© 2026 Streamlit Flashcard App for Complex Topics</p>
 </div>
 """, unsafe_allow_html=True)
+
+# Show API key status in sidebar
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 🔑 API Status")
+    if st.session_state.get("user_api_key"):
+        st.success("✅ API Key Active")
+        st.caption(f"💰 Limit: ${st.session_state.get('user_spending_limit', 5.0):.2f}")
+        if st.button("🔄 Change API Key", use_container_width=True):
+            del st.session_state["user_api_key"]
+            st.rerun()

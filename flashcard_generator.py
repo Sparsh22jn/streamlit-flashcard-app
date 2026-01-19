@@ -10,10 +10,7 @@ import re
 from typing import List, Dict, Optional
 from pathlib import Path
 import anthropic
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+import streamlit as st
 
 # Model configuration
 CLAUDE_MODEL = "claude-sonnet-4-20250514"
@@ -22,10 +19,14 @@ MAX_TOKENS = 8192  # Increased for comprehensive flashcard generation
 # Cost configuration (per million tokens)
 INPUT_COST_PER_MILLION = 3.00   # $3 per 1M input tokens
 OUTPUT_COST_PER_MILLION = 15.00  # $15 per 1M output tokens
-SPENDING_LIMIT = float(os.getenv("SPENDING_LIMIT", "10.00"))  # Default $10 limit
 
 # Cost tracking file
 COST_TRACKER_FILE = Path(__file__).parent / ".cost_tracker.json"
+
+
+def get_spending_limit() -> float:
+    """Get spending limit from session state or default."""
+    return st.session_state.get("user_spending_limit", 10.0)
 
 
 def get_total_spent() -> float:
@@ -42,10 +43,13 @@ def get_total_spent() -> float:
 
 def get_cost_details() -> Dict:
     """Get detailed cost tracking information."""
+    spending_limit = get_spending_limit()
     if COST_TRACKER_FILE.exists():
         try:
             with open(COST_TRACKER_FILE, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                data["spending_limit"] = spending_limit
+                return data
         except (json.JSONDecodeError, IOError):
             pass
     return {
@@ -53,7 +57,7 @@ def get_cost_details() -> Dict:
         "total_input_tokens": 0,
         "total_output_tokens": 0,
         "api_calls": 0,
-        "spending_limit": SPENDING_LIMIT
+        "spending_limit": spending_limit
     }
 
 
@@ -76,7 +80,7 @@ def update_cost_tracker(input_tokens: int, output_tokens: int) -> float:
     data["total_input_tokens"] = data.get("total_input_tokens", 0) + input_tokens
     data["total_output_tokens"] = data.get("total_output_tokens", 0) + output_tokens
     data["api_calls"] = data.get("api_calls", 0) + 1
-    data["spending_limit"] = SPENDING_LIMIT
+    data["spending_limit"] = get_spending_limit()
     
     # Save updated data
     with open(COST_TRACKER_FILE, "w") as f:
@@ -92,12 +96,13 @@ def check_spending_limit() -> tuple[bool, str]:
     Returns:
         Tuple of (is_allowed, message)
     """
+    spending_limit = get_spending_limit()
     total_spent = get_total_spent()
-    if total_spent >= SPENDING_LIMIT:
-        return False, f"Spending limit of ${SPENDING_LIMIT:.2f} reached! Total spent: ${total_spent:.2f}. To continue, increase SPENDING_LIMIT in .env or reset the tracker."
+    if total_spent >= spending_limit:
+        return False, f"Spending limit of ${spending_limit:.2f} reached! Total spent: ${total_spent:.2f}. Increase your limit or reset the tracker."
     
-    remaining = SPENDING_LIMIT - total_spent
-    return True, f"Budget remaining: ${remaining:.2f} of ${SPENDING_LIMIT:.2f}"
+    remaining = spending_limit - total_spent
+    return True, f"Budget remaining: ${remaining:.2f} of ${spending_limit:.2f}"
 
 
 def reset_cost_tracker():
@@ -107,17 +112,24 @@ def reset_cost_tracker():
         "total_input_tokens": 0,
         "total_output_tokens": 0,
         "api_calls": 0,
-        "spending_limit": SPENDING_LIMIT
+        "spending_limit": get_spending_limit()
     }
     with open(COST_TRACKER_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 
 def get_client():
-    """Get configured Anthropic client."""
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    """Get configured Anthropic client using session state API key."""
+    # First try session state (user-provided key)
+    api_key = st.session_state.get("user_api_key")
+    
+    # Fallback to environment variable (for backward compatibility)
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+    
+    if not api_key:
+        raise ValueError("No API key found. Please enter your Claude API key on the main page.")
+    
     return anthropic.Anthropic(api_key=api_key)
 
 
