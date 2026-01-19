@@ -30,8 +30,8 @@ init_database()
 
 # Page config
 st.set_page_config(
-    page_title="Generate",
-    page_icon="✨",
+    page_title="Smart FlashCards",
+    page_icon="🧠",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -179,8 +179,8 @@ with st.sidebar:
         st.switch_page("app.py")
 
 # Main content
-st.markdown('<p class="gen-title">✨ Generate Flashcards</p>', unsafe_allow_html=True)
-st.markdown('<p class="gen-subtitle">Enter a topic and create AI-powered flashcards</p>', unsafe_allow_html=True)
+st.markdown('<p class="gen-title">🧠 Smart FlashCards</p>', unsafe_allow_html=True)
+st.markdown('<p class="gen-subtitle">AI-powered flashcards for smarter learning</p>', unsafe_allow_html=True)
 
 # Topic input
 topic = st.text_area(

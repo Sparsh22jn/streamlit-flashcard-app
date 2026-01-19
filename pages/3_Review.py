@@ -45,8 +45,8 @@ init_spaced_repetition_table()
 
 # Page config
 st.set_page_config(
-    page_title="Review",
-    page_icon="📖",
+    page_title="Review | Smart FlashCards",
+    page_icon="🧠",
     layout="centered",
     initial_sidebar_state="collapsed"
 )

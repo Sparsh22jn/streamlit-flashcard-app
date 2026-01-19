@@ -9,8 +9,8 @@ from database import init_database
 
 # App configuration
 st.set_page_config(
-    page_title="Flashcards",
-    page_icon="🎴",
+    page_title="Smart FlashCards",
+    page_icon="🧠",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -122,7 +122,7 @@ def check_password():
     if st.session_state.get("password_correct"):
         return True
     
-    st.markdown('<p class="main-title">🎴 Flashcards</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">🧠 Smart FlashCards</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Enter password to continue</p>', unsafe_allow_html=True)
     
     password = st.text_input("Password", type="password", label_visibility="collapsed", 
@@ -143,7 +143,7 @@ def check_api_key():
     if st.session_state.get("user_api_key") and st.session_state.get("api_key_validated"):
         return True
     
-    st.markdown('<p class="main-title">🎴 Flashcards</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-title">🧠 Smart FlashCards</p>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Enter your Claude API key to get started</p>', unsafe_allow_html=True)
     
     api_key = st.text_input(

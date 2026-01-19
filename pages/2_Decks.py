@@ -30,8 +30,8 @@ init_database()
 
 # Page config
 st.set_page_config(
-    page_title="My Decks",
-    page_icon="📚",
+    page_title="My Decks | Smart FlashCards",
+    page_icon="🧠",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
