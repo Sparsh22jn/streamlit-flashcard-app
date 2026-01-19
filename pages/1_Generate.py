@@ -42,23 +42,34 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
+    /* Hide app.py from sidebar */
+    [data-testid="stSidebarNav"] li:first-child {display: none;}
+    
+    /* Fix layout */
     .block-container {
-        padding-top: 2rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
         max-width: 700px;
+    }
+    
+    /* Reduce header padding */
+    header[data-testid="stHeader"] {
+        height: 0;
     }
     
     /* Main title */
     .gen-title {
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: 600;
         text-align: center;
         margin-bottom: 0.25rem;
+        margin-top: 0;
     }
     .gen-subtitle {
         text-align: center;
         color: #666;
-        font-size: 0.95rem;
-        margin-bottom: 2rem;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
     }
     
     /* Input area */
@@ -174,9 +185,9 @@ st.markdown('<p class="gen-subtitle">Enter a topic and create AI-powered flashca
 # Topic input
 topic = st.text_area(
     "Topic",
-    placeholder="What would you like to learn?\n\nExamples:\n• Python decorators\n• The French Revolution\n• Quantum entanglement basics",
+    placeholder="e.g., Python decorators, The French Revolution, Quantum physics...",
     label_visibility="collapsed",
-    height=120
+    height=80
 )
 
 # Options row

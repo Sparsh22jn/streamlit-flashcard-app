@@ -57,8 +57,11 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
+    /* Hide app.py from sidebar */
+    [data-testid="stSidebarNav"] li:first-child {display: none;}
+    
     .block-container {
-        padding-top: 1.5rem;
+        padding-top: 1rem;
         max-width: 700px;
     }
     
