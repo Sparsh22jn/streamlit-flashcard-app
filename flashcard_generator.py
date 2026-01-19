@@ -439,7 +439,7 @@ def generate_flashcards(topic: str, num_cards: int, complexity_level: str) -> Di
                     "cost_info": {
                         "this_call": call_cost,
                         "total_spent": cost_details["total_spent"],
-                        "remaining_budget": SPENDING_LIMIT - cost_details["total_spent"]
+                        "remaining_budget": get_spending_limit() - cost_details["total_spent"]
                     }
                 }
             else:
@@ -527,7 +527,7 @@ Provide ONLY the explanation, no preamble or metadata."""
             "cost_info": {
                 "this_call": call_cost,
                 "total_spent": cost_details["total_spent"],
-                "remaining_budget": SPENDING_LIMIT - cost_details["total_spent"]
+                "remaining_budget": get_spending_limit() - cost_details["total_spent"]
             }
         }
         
@@ -638,7 +638,7 @@ Make it MEMORABLE, CREATIVE, and EFFECTIVE. The goal is that the user will NEVER
             "cost_info": {
                 "this_call": call_cost,
                 "total_spent": cost_details["total_spent"],
-                "remaining_budget": SPENDING_LIMIT - cost_details["total_spent"]
+                "remaining_budget": get_spending_limit() - cost_details["total_spent"]
             }
         }
         
