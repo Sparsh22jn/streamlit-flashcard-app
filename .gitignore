@@ -33,10 +33,10 @@ wheels/
 # Cost tracker (contains API usage data)
 .cost_tracker.json
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Database - REMOVED from gitignore to allow flashcard sharing
+# *.db
+# *.sqlite
+# *.sqlite3
 
 # IDE
 .idea/
