@@ -1,170 +1,296 @@
 """
-Flashcard Generation Page
-Allows users to create new flashcard sets using AI.
+Generate Flashcards - Minimal ChatGPT-style Interface
 """
 
 import streamlit as st
 import os
 from database import init_database, create_cardset, save_flashcards_bulk, get_all_cardsets
 from flashcard_generator import generate_flashcards
-from utils import validate_topic, get_complexity_emoji
 
-# Authentication check
+# Auth check
 def check_auth():
-    """Check if user is authenticated and has API key."""
-    correct_password = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD", "")
+    correct_password = os.getenv("APP_PASSWORD", "")
+    if not correct_password:
+        try:
+            correct_password = st.secrets.get("APP_PASSWORD", "")
+        except:
+            correct_password = ""
     if correct_password and not st.session_state.get("password_correct", False):
-        st.warning("🔐 Please login from the main page first.")
+        st.switch_page("app.py")
         return False
     if not st.session_state.get("user_api_key"):
-        st.warning("🔑 Please enter your API key on the main page first.")
+        st.switch_page("app.py")
         return False
     return True
 
 if not check_auth():
     st.stop()
 
-# Initialize database
 init_database()
 
-# Page configuration
+# Page config
 st.set_page_config(
-    page_title="Generate Flashcards",
-    page_icon="📝",
-    layout="centered"
+    page_title="Generate",
+    page_icon="✨",
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-st.title("📝 Generate Flashcards")
-st.markdown("Create AI-powered flashcards on any topic!")
-
-st.markdown("---")
-
-# Input form
-with st.form("flashcard_form"):
-    st.subheader("What would you like to learn?")
+# Minimal CSS
+st.markdown("""
+<style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     
-    # Topic input
-    topic = st.text_input(
-        "Topic / Subject / Concept",
-        placeholder="e.g., Python decorators, The French Revolution, Quantum entanglement...",
-        help="Enter any topic you want to create flashcards for"
-    )
-    
-    # Number of cards slider
-    num_cards = st.slider(
-        "How many flashcards?",
-        min_value=5,
-        max_value=50,
-        value=10,
-        step=5,
-        help="Choose how many flashcards to generate"
-    )
-    
-    # Complexity dropdown
-    complexity = st.selectbox(
-        "Complexity Level",
-        options=["Beginner", "Intermediate", "Advanced"],
-        index=1,
-        help="Beginner: Basic concepts | Intermediate: Applications | Advanced: Deep theory"
-    )
-    
-    # Display complexity description
-    complexity_descriptions = {
-        "Beginner": "🌱 Focus on definitions and basic concepts",
-        "Intermediate": "🌿 Include applications and real-world connections",
-        "Advanced": "🌳 Cover edge cases, optimizations, and deep theory"
+    .block-container {
+        padding-top: 2rem;
+        max-width: 700px;
     }
-    st.caption(complexity_descriptions[complexity])
     
-    # Submit button
-    submitted = st.form_submit_button("🚀 Generate Flashcards", use_container_width=True)
+    /* Main title */
+    .gen-title {
+        font-size: 2rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 0.25rem;
+    }
+    .gen-subtitle {
+        text-align: center;
+        color: #666;
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+    }
+    
+    /* Input area */
+    .stTextArea textarea {
+        border-radius: 16px;
+        border: 1px solid #ddd;
+        padding: 16px;
+        font-size: 1rem;
+        min-height: 100px;
+    }
+    .stTextArea textarea:focus {
+        border-color: #10a37f;
+        box-shadow: 0 0 0 1px #10a37f;
+    }
+    
+    /* Options row */
+    .options-row {
+        display: flex;
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    /* Generate button */
+    .stButton > button[kind="primary"] {
+        background: #10a37f;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 28px;
+        font-weight: 500;
+        font-size: 1rem;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: #0d8a6b;
+    }
+    
+    /* Suggestion chips */
+    .chip {
+        display: inline-block;
+        background: #f0f0f0;
+        padding: 8px 16px;
+        border-radius: 20px;
+        margin: 4px;
+        font-size: 0.85rem;
+        color: #444;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .chip:hover {
+        background: #e0e0e0;
+    }
+    
+    /* Success card */
+    .success-card {
+        background: linear-gradient(135deg, #10a37f 0%, #0d8a6b 100%);
+        border-radius: 16px;
+        padding: 24px;
+        color: white;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    
+    /* Preview card */
+    .preview-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 8px 0;
+        border-left: 4px solid #10a37f;
+    }
+    .preview-q {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    .preview-a {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    /* Nav link */
+    .nav-link {
+        text-align: center;
+        margin-top: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Handle form submission
-if submitted:
-    # Validate input
-    is_valid, error_message = validate_topic(topic)
+# Initialize state
+if 'generated_cards' not in st.session_state:
+    st.session_state.generated_cards = None
+if 'last_topic' not in st.session_state:
+    st.session_state.last_topic = None
+
+# Minimal navigation in sidebar
+with st.sidebar:
+    st.markdown("### Navigation")
+    if st.button("📚 My Decks", use_container_width=True):
+        st.switch_page("pages/2_Decks.py")
+    if st.button("📖 Review", use_container_width=True):
+        st.switch_page("pages/3_Review.py")
     
-    if not is_valid:
-        st.error(f"❌ {error_message}")
+    st.markdown("---")
+    st.caption(f"💰 Limit: ${st.session_state.get('user_spending_limit', 5.0):.2f}")
+    if st.button("🔄 Change API Key", use_container_width=True):
+        del st.session_state["user_api_key"]
+        del st.session_state["api_key_validated"]
+        st.switch_page("app.py")
+
+# Main content
+st.markdown('<p class="gen-title">✨ Generate Flashcards</p>', unsafe_allow_html=True)
+st.markdown('<p class="gen-subtitle">Enter a topic and create AI-powered flashcards</p>', unsafe_allow_html=True)
+
+# Topic input
+topic = st.text_area(
+    "Topic",
+    placeholder="What would you like to learn?\n\nExamples:\n• Python decorators\n• The French Revolution\n• Quantum entanglement basics",
+    label_visibility="collapsed",
+    height=120
+)
+
+# Options row
+col1, col2 = st.columns(2)
+
+with col1:
+    num_cards = st.select_slider(
+        "Cards",
+        options=[5, 10, 15, 20, 25, 30],
+        value=10,
+        help="Number of flashcards to generate"
+    )
+
+with col2:
+    complexity = st.selectbox(
+        "Level",
+        ["Beginner", "Intermediate", "Advanced"],
+        index=1,
+        help="Complexity level of the content"
+    )
+
+# Generate button
+st.markdown("<br>", unsafe_allow_html=True)
+generate_clicked = st.button("Generate →", type="primary", use_container_width=True)
+
+# Handle generation
+if generate_clicked:
+    if not topic or len(topic.strip()) < 3:
+        st.error("Please enter a topic (at least 3 characters)")
     else:
-        # Show generation progress
-        with st.spinner(f"🤖 Generating {num_cards} flashcards about '{topic}'..."):
-            # Call Claude API
-            result = generate_flashcards(topic, num_cards, complexity)
+        with st.spinner(f"Creating {num_cards} flashcards..."):
+            result = generate_flashcards(topic.strip(), num_cards, complexity)
             
             if result["success"]:
                 flashcards = result["flashcards"]
                 
-                # Create cardset in database
-                cardset_id = create_cardset(topic, len(flashcards), complexity)
+                # Save to database
+                cardset_id = create_cardset(topic.strip(), len(flashcards), complexity)
+                save_flashcards_bulk(cardset_id, topic.strip(), flashcards, complexity)
                 
-                # Save flashcards
-                save_flashcards_bulk(cardset_id, topic, flashcards, complexity)
+                st.session_state.generated_cards = flashcards
+                st.session_state.last_topic = topic.strip()
+                st.session_state.last_cardset_id = cardset_id
                 
                 # Success message
-                st.success(f"✅ Successfully generated {len(flashcards)} flashcards!")
-                st.info(f"📋 Cardset ID: `{cardset_id}`")
+                st.markdown(f"""
+                <div class="success-card">
+                    <h3>✅ Created {len(flashcards)} flashcards</h3>
+                    <p>{topic.strip()}</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                # Show cost information
+                # Cost info
                 if "cost_info" in result:
                     cost = result["cost_info"]
-                    st.caption(f"💰 Cost: ${cost['this_call']:.4f} | Total spent: ${cost['total_spent']:.2f} | Remaining: ${cost['remaining_budget']:.2f}")
+                    st.caption(f"💰 Cost: ${cost['this_call']:.4f} | Remaining: ${cost['remaining_budget']:.2f}")
                 
-                # Display generated flashcards
-                st.markdown("---")
-                st.subheader(f"Preview: {get_complexity_emoji(complexity)} {topic}")
+                # Preview first 3 cards
+                st.markdown("### Preview")
+                for i, card in enumerate(flashcards[:3]):
+                    st.markdown(f"""
+                    <div class="preview-card">
+                        <div class="preview-q">Q: {card['question'][:100]}{'...' if len(card['question']) > 100 else ''}</div>
+                        <div class="preview-a">A: {card['answer'][:150]}{'...' if len(card['answer']) > 150 else ''}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                for i, card in enumerate(flashcards, 1):
-                    with st.expander(f"Card {i}: {card['question'][:50]}...", expanded=(i <= 3)):
-                        st.markdown("**Question:**")
-                        st.markdown(card['question'])
-                        st.markdown("**Answer:**")
-                        st.markdown(card['answer'])
+                if len(flashcards) > 3:
+                    st.caption(f"+ {len(flashcards) - 3} more cards")
                 
-                # Navigation prompt
-                st.markdown("---")
-                st.info("👈 Go to **Review** page in the sidebar to study these flashcards!")
-                
+                # Navigation buttons
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    if st.button("📚 View All Decks", use_container_width=True):
+                        st.switch_page("pages/2_Decks.py")
+                with col_b:
+                    if st.button("📖 Start Reviewing", use_container_width=True, type="primary"):
+                        st.session_state.selected_cardset = cardset_id
+                        st.switch_page("pages/3_Review.py")
             else:
-                st.error(f"❌ Failed to generate flashcards: {result['error']}")
-                st.markdown("""
-                **Troubleshooting tips:**
-                - Check that your ANTHROPIC_API_KEY is set correctly
-                - Try a different topic or fewer cards
-                - Check your API quota at console.anthropic.com
-                """)
+                st.error(f"Failed: {result['error']}")
 
-# Show existing cardsets
-st.markdown("---")
-st.subheader("📚 Your Flashcard Sets")
+# Suggestions (when no cards generated)
+if st.session_state.generated_cards is None:
+    st.markdown("---")
+    st.markdown("### 💡 Try these topics")
+    
+    suggestions = [
+        "Python list comprehensions",
+        "World War II key events",
+        "Machine learning basics",
+        "Photosynthesis",
+        "Spanish irregular verbs",
+        "Data structures"
+    ]
+    
+    # Display as chips
+    cols = st.columns(3)
+    for i, suggestion in enumerate(suggestions):
+        with cols[i % 3]:
+            if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
+                st.session_state.topic_suggestion = suggestion
+                st.rerun()
+    
+    # Load suggestion into input if clicked
+    if 'topic_suggestion' in st.session_state:
+        topic = st.session_state.topic_suggestion
+        del st.session_state.topic_suggestion
+        st.rerun()
 
-cardsets = get_all_cardsets()
-
-if cardsets:
-    for cardset in cardsets:
-        emoji = get_complexity_emoji(cardset['complexity_level'])
-        with st.container():
-            col1, col2, col3 = st.columns([3, 1, 1])
-            with col1:
-                st.markdown(f"**{emoji} {cardset['topic']}**")
-            with col2:
-                st.caption(f"{cardset['num_cards']} cards")
-            with col3:
-                st.caption(cardset['complexity_level'])
-        st.divider()
-else:
-    st.info("No flashcard sets yet. Generate your first set above! ☝️")
-
-# Tips section
-st.markdown("---")
-st.markdown("### 💡 Tips for Better Flashcards")
-
-tips = [
-    "**Be specific**: 'Python list comprehensions' works better than just 'Python'",
-    "**Match complexity to your level**: Start with Beginner if you're new to a topic",
-    "**Optimal number**: 10-20 cards is usually ideal for a study session",
-    "**Break down large topics**: Create multiple sets for comprehensive subjects"
-]
-
-for tip in tips:
-    st.markdown(f"• {tip}")
+# Quick link to decks
+existing_sets = get_all_cardsets()
+if existing_sets:
+    st.markdown("---")
+    st.markdown(f"📚 You have **{len(existing_sets)}** deck{'s' if len(existing_sets) > 1 else ''} → ", unsafe_allow_html=True)
+    if st.button("View My Decks"):
+        st.switch_page("pages/2_Decks.py")
