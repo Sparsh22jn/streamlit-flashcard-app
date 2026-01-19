@@ -157,6 +157,46 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize dark mode
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Dark mode CSS override
+if st.session_state.dark_mode:
+    st.markdown("""
+    <style>
+        .stApp { background-color: #0d1117 !important; }
+        [data-testid="stSidebar"] { background-color: #161b22 !important; }
+        [data-testid="stSidebar"] * { color: #c9d1d9 !important; }
+        p, span, div, h1, h2, h3, h4, label { color: #c9d1d9 !important; }
+        .gen-title, .gen-subtitle { color: #c9d1d9 !important; }
+        .stTextArea textarea { 
+            background-color: #161b22 !important; 
+            color: #c9d1d9 !important;
+            border-color: #30363d !important;
+        }
+        .stButton > button {
+            background-color: #21262d !important;
+            border: 1px solid #30363d !important;
+            color: #c9d1d9 !important;
+        }
+        .stButton > button[kind="primary"] {
+            background: #238636 !important;
+            border: none !important;
+        }
+        .success-card {
+            background: linear-gradient(135deg, #238636 0%, #1a7f37 100%) !important;
+            box-shadow: 0 0 20px rgba(35, 134, 54, 0.3);
+        }
+        .preview-card {
+            background: #161b22 !important;
+            border-left-color: #238636 !important;
+        }
+        .preview-q { color: #c9d1d9 !important; }
+        .preview-a { color: #8b949e !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Initialize state
 if 'generated_cards' not in st.session_state:
     st.session_state.generated_cards = None
@@ -165,6 +205,13 @@ if 'last_topic' not in st.session_state:
 
 # Minimal navigation in sidebar
 with st.sidebar:
+    st.markdown("### 🎨 Theme")
+    dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, key="dark_toggle_gen")
+    if dark_mode != st.session_state.dark_mode:
+        st.session_state.dark_mode = dark_mode
+        st.rerun()
+    
+    st.markdown("---")
     st.markdown("### Navigation")
     if st.button("📚 My Decks", use_container_width=True):
         st.switch_page("pages/2_Decks.py")

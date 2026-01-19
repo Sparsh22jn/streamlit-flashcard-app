@@ -1,5 +1,5 @@
 """
-Review Flashcards - Minimal Anki-style Interface
+Review Flashcards - With Dark Mode & Swipe Gestures
 """
 
 import streamlit as st
@@ -51,120 +51,338 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Minimal CSS
+# Initialize dark mode in session state
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+dark = st.session_state.dark_mode
+
+# Dynamic CSS based on theme
+def get_theme_css():
+    if dark:
+        return """
+        <style>
+            /* Dark mode base */
+            .stApp {
+                background-color: #0d1117 !important;
+            }
+            
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            [data-testid="stSidebarNav"] li:first-child {display: none;}
+            
+            .block-container {
+                padding-top: 1rem;
+                max-width: 700px;
+            }
+            
+            /* Dark sidebar */
+            [data-testid="stSidebar"] {
+                background-color: #161b22 !important;
+            }
+            [data-testid="stSidebar"] * {
+                color: #c9d1d9 !important;
+            }
+            
+            /* Progress bar dark */
+            .progress-bar {
+                height: 4px;
+                background: #30363d;
+                border-radius: 2px;
+                margin-bottom: 8px;
+            }
+            .progress-fill {
+                height: 100%;
+                background: #10a37f;
+                border-radius: 2px;
+                transition: width 0.3s;
+                box-shadow: 0 0 10px #10a37f;
+            }
+            .progress-text {
+                text-align: center;
+                font-size: 0.85rem;
+                color: #8b949e;
+                margin-bottom: 1.5rem;
+            }
+            
+            /* Question card - dark with glow */
+            .q-card {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                color: white;
+                border-radius: 20px;
+                padding: 40px 32px;
+                min-height: 240px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                border: 1px solid #30363d;
+                box-shadow: 0 0 30px rgba(88, 166, 255, 0.15);
+            }
+            
+            /* Answer card - dark with green glow */
+            .a-card {
+                background: linear-gradient(135deg, #0d1f22 0%, #1a3a2a 100%);
+                color: white;
+                border-radius: 20px;
+                padding: 40px 32px;
+                min-height: 240px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                border: 1px solid #238636;
+                box-shadow: 0 0 30px rgba(16, 163, 127, 0.3);
+            }
+            
+            .card-label {
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                opacity: 0.7;
+                margin-bottom: 16px;
+            }
+            .card-content {
+                font-size: 1.15rem;
+                line-height: 1.7;
+            }
+            
+            /* ELI5 card dark */
+            .eli5-card {
+                background: linear-gradient(135deg, #3d1a45 0%, #4a1942 100%);
+                color: white;
+                border-radius: 16px;
+                padding: 24px;
+                margin-top: 12px;
+                text-align: center;
+                border: 1px solid #f093fb55;
+                box-shadow: 0 0 20px rgba(240, 147, 251, 0.2);
+            }
+            
+            /* Mnemonic card dark */
+            .mnem-card {
+                background: linear-gradient(135deg, #1e1a45 0%, #2d1f5e 100%);
+                color: white;
+                border-radius: 16px;
+                padding: 24px;
+                margin-top: 12px;
+                text-align: left;
+                border: 1px solid #667eea55;
+                box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+            }
+            .mnem-card .card-content {
+                font-size: 0.95rem;
+                text-align: left;
+            }
+            
+            /* Rating labels dark */
+            .rating-label {
+                font-size: 0.75rem;
+                color: #8b949e;
+                text-align: center;
+            }
+            
+            /* Buttons dark */
+            .stButton > button {
+                border-radius: 12px;
+                background-color: #21262d !important;
+                border: 1px solid #30363d !important;
+                color: #c9d1d9 !important;
+            }
+            .stButton > button:hover {
+                background-color: #30363d !important;
+                border-color: #8b949e !important;
+            }
+            .stButton > button[kind="primary"] {
+                background: #238636 !important;
+                border: none !important;
+                box-shadow: 0 0 15px rgba(35, 134, 54, 0.4);
+            }
+            .stButton > button[kind="primary"]:hover {
+                background: #2ea043 !important;
+            }
+            
+            /* Swipe hint dark */
+            .swipe-hint {
+                text-align: center;
+                color: #8b949e;
+                font-size: 0.8rem;
+                margin: 10px 0;
+                padding: 8px;
+                background: #161b22;
+                border-radius: 8px;
+            }
+            
+            /* General text */
+            p, span, div, h1, h2, h3, h4 {
+                color: #c9d1d9 !important;
+            }
+        </style>
+        """
+    else:
+        return """
+        <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            [data-testid="stSidebarNav"] li:first-child {display: none;}
+            
+            .block-container {
+                padding-top: 1rem;
+                max-width: 700px;
+            }
+            
+            /* Progress bar */
+            .progress-bar {
+                height: 4px;
+                background: #e0e0e0;
+                border-radius: 2px;
+                margin-bottom: 8px;
+            }
+            .progress-fill {
+                height: 100%;
+                background: #10a37f;
+                border-radius: 2px;
+                transition: width 0.3s;
+            }
+            .progress-text {
+                text-align: center;
+                font-size: 0.85rem;
+                color: #888;
+                margin-bottom: 1.5rem;
+            }
+            
+            /* Question card */
+            .q-card {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                color: white;
+                border-radius: 20px;
+                padding: 40px 32px;
+                min-height: 240px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+            }
+            
+            /* Answer card */
+            .a-card {
+                background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+                color: white;
+                border-radius: 20px;
+                padding: 40px 32px;
+                min-height: 240px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .card-label {
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                opacity: 0.7;
+                margin-bottom: 16px;
+            }
+            .card-content {
+                font-size: 1.15rem;
+                line-height: 1.7;
+            }
+            
+            /* ELI5 card */
+            .eli5-card {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                border-radius: 16px;
+                padding: 24px;
+                margin-top: 12px;
+                text-align: center;
+            }
+            
+            /* Mnemonic card */
+            .mnem-card {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 16px;
+                padding: 24px;
+                margin-top: 12px;
+                text-align: left;
+            }
+            .mnem-card .card-content {
+                font-size: 0.95rem;
+                text-align: left;
+            }
+            
+            /* Rating labels */
+            .rating-label {
+                font-size: 0.75rem;
+                color: #888;
+                text-align: center;
+            }
+            
+            /* Buttons */
+            .stButton > button {
+                border-radius: 12px;
+            }
+            .stButton > button[kind="primary"] {
+                background: #10a37f;
+                border: none;
+            }
+            
+            /* Swipe hint */
+            .swipe-hint {
+                text-align: center;
+                color: #888;
+                font-size: 0.8rem;
+                margin: 10px 0;
+                padding: 8px;
+                background: #f5f5f5;
+                border-radius: 8px;
+            }
+        </style>
+        """
+
+st.markdown(get_theme_css(), unsafe_allow_html=True)
+
+# Swipe gesture JavaScript
 st.markdown("""
-<style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+<script>
+(function() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const minSwipeDistance = 50;
     
-    /* Hide app.py from sidebar */
-    [data-testid="stSidebarNav"] li:first-child {display: none;}
+    document.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, false);
     
-    .block-container {
-        padding-top: 1rem;
-        max-width: 700px;
-    }
+    document.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, false);
     
-    /* Progress bar */
-    .progress-bar {
-        height: 4px;
-        background: #e0e0e0;
-        border-radius: 2px;
-        margin-bottom: 8px;
+    function handleSwipe() {
+        const swipeDistance = touchEndX - touchStartX;
+        
+        if (Math.abs(swipeDistance) < minSwipeDistance) return;
+        
+        if (swipeDistance > 0) {
+            // Swipe right - Got it (Good)
+            const goodBtn = document.querySelector('button[kind="secondary"]:nth-of-type(3)') || 
+                           Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Good'));
+            if (goodBtn) goodBtn.click();
+        } else {
+            // Swipe left - Review again
+            const againBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Again'));
+            if (againBtn) againBtn.click();
+        }
     }
-    .progress-fill {
-        height: 100%;
-        background: #10a37f;
-        border-radius: 2px;
-        transition: width 0.3s;
-    }
-    .progress-text {
-        text-align: center;
-        font-size: 0.85rem;
-        color: #888;
-        margin-bottom: 1.5rem;
-    }
-    
-    /* Question card */
-    .q-card {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        color: white;
-        border-radius: 20px;
-        padding: 40px 32px;
-        min-height: 240px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-    
-    /* Answer card */
-    .a-card {
-        background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
-        color: white;
-        border-radius: 20px;
-        padding: 40px 32px;
-        min-height: 240px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-    
-    .card-label {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        opacity: 0.7;
-        margin-bottom: 16px;
-    }
-    .card-content {
-        font-size: 1.15rem;
-        line-height: 1.7;
-    }
-    
-    /* ELI5 card */
-    .eli5-card {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        border-radius: 16px;
-        padding: 24px;
-        margin-top: 12px;
-        text-align: center;
-    }
-    
-    /* Mnemonic card */
-    .mnem-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 16px;
-        padding: 24px;
-        margin-top: 12px;
-        text-align: left;
-    }
-    .mnem-card .card-content {
-        font-size: 0.95rem;
-        text-align: left;
-    }
-    
-    /* Rating buttons */
-    .rating-label {
-        font-size: 0.75rem;
-        color: #888;
-        text-align: center;
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        border-radius: 12px;
-    }
-    .stButton > button[kind="primary"] {
-        background: #10a37f;
-        border: none;
-    }
-</style>
+})();
+</script>
 """, unsafe_allow_html=True)
 
 # Initialize session state
@@ -193,6 +411,13 @@ if not cardsets:
 
 # Sidebar navigation
 with st.sidebar:
+    st.markdown("### 🎨 Theme")
+    dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, key="dark_toggle")
+    if dark_mode != st.session_state.dark_mode:
+        st.session_state.dark_mode = dark_mode
+        st.rerun()
+    
+    st.markdown("---")
     st.markdown("### Navigation")
     if st.button("✨ Generate", use_container_width=True):
         st.switch_page("pages/1_Generate.py")
@@ -280,8 +505,14 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
+    # Swipe hint for mobile
+    st.markdown("""
+    <div class="swipe-hint">
+        👈 Swipe left = Again &nbsp;|&nbsp; Swipe right = Good 👉
+    </div>
+    """, unsafe_allow_html=True)
+    
     # ELI5 / Mnemonic buttons
-    st.markdown("<br>", unsafe_allow_html=True)
     eli_col, mnem_col = st.columns(2)
     
     with eli_col:
@@ -377,22 +608,22 @@ else:
     
     with col1:
         st.markdown(f'<p class="rating-label">{intervals["again"]}</p>', unsafe_allow_html=True)
-        if st.button("🔴 Again", use_container_width=True):
+        if st.button("🔴 Again", use_container_width=True, key="btn_again"):
             rate_card('again')
     
     with col2:
         st.markdown(f'<p class="rating-label">{intervals["hard"]}</p>', unsafe_allow_html=True)
-        if st.button("🟠 Hard", use_container_width=True):
+        if st.button("🟠 Hard", use_container_width=True, key="btn_hard"):
             rate_card('hard')
     
     with col3:
         st.markdown(f'<p class="rating-label">{intervals["good"]}</p>', unsafe_allow_html=True)
-        if st.button("🟢 Good", use_container_width=True):
+        if st.button("🟢 Good", use_container_width=True, key="btn_good"):
             rate_card('good')
     
     with col4:
         st.markdown(f'<p class="rating-label">{intervals["easy"]}</p>', unsafe_allow_html=True)
-        if st.button("🔵 Easy", use_container_width=True):
+        if st.button("🔵 Easy", use_container_width=True, key="btn_easy"):
             rate_card('easy')
 
 # Navigation

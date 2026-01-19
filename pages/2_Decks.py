@@ -134,8 +134,55 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize dark mode
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Dark mode CSS override
+if st.session_state.dark_mode:
+    st.markdown("""
+    <style>
+        .stApp { background-color: #0d1117 !important; }
+        [data-testid="stSidebar"] { background-color: #161b22 !important; }
+        [data-testid="stSidebar"] * { color: #c9d1d9 !important; }
+        p, span, div, h1, h2, h3, h4, label { color: #c9d1d9 !important; }
+        .decks-title, .decks-subtitle { color: #c9d1d9 !important; }
+        .deck-card {
+            background: #161b22 !important;
+            border-color: #30363d !important;
+        }
+        .deck-card:hover {
+            border-color: #238636 !important;
+            box-shadow: 0 0 20px rgba(35, 134, 54, 0.3) !important;
+        }
+        .deck-topic { color: #c9d1d9 !important; }
+        .deck-meta { color: #8b949e !important; }
+        .deck-badge {
+            background: #21262d !important;
+            color: #8b949e !important;
+        }
+        .empty-state { color: #8b949e !important; }
+        .stButton > button {
+            background-color: #21262d !important;
+            border: 1px solid #30363d !important;
+            color: #c9d1d9 !important;
+        }
+        .stButton > button[kind="primary"] {
+            background: #238636 !important;
+            border: none !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Sidebar navigation
 with st.sidebar:
+    st.markdown("### 🎨 Theme")
+    dark_mode = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, key="dark_toggle_decks")
+    if dark_mode != st.session_state.dark_mode:
+        st.session_state.dark_mode = dark_mode
+        st.rerun()
+    
+    st.markdown("---")
     st.markdown("### Navigation")
     if st.button("✨ Generate", use_container_width=True, type="primary"):
         st.switch_page("pages/1_Generate.py")
