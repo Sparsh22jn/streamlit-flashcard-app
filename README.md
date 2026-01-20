@@ -1,262 +1,196 @@
-# 🎴 Streamlit Flashcard App for Complex Topics
+# 🧠 Smart FlashCards
 
-A Streamlit-based flashcard application that uses AI (Claude 3.5 Sonnet) to generate educational flashcards on any topic. Features Anki-style spaced repetition, ELI5 explanations, and memory mnemonics.
+AI-powered flashcard app for smarter learning. Generate comprehensive flashcards using Claude AI, study with Anki-style spaced repetition, and master any topic with ELI5 explanations and memory mnemonics.
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)
 ![Claude](https://img.shields.io/badge/Claude-3.5_Sonnet-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
+## 🌐 Live Demo
+
+**[Try Smart FlashCards →](https://streamlit-flashcard-app.streamlit.app)**
+
+---
+
 ## ✨ Features
 
-- **🤖 AI-Powered Generation**: Create comprehensive flashcards using Claude 3.5 Sonnet
-- **� BYOK (Bring Your Own Key)**: Users enter their own API key - no shared credits!
-- **📚 Multiple Complexity Levels**: Beginner, Intermediate, and Advanced options
-- **🔄 Anki-Style Review**: Spaced repetition with Again/Hard/Good/Easy ratings
-- **🧒 ELI5 Explanations**: Get simple, child-friendly explanations for any concept
-- **🧠 Memory Mnemonics**: AI-generated memory tricks using proven techniques
-- **💰 Cost Tracking**: Built-in spending limit protection for API costs
-- **🔐 Password Protection**: Secure your deployed app from unauthorized use
-- **💾 Persistent Storage**: All flashcards saved to SQLite database
-- **📱 Mobile Friendly**: Works great on phones and tablets
+### 🤖 AI-Powered Generation
+- **Claude 3.5 Sonnet** generates comprehensive, well-structured flashcards
+- **SuperMemo 20 Rules** inspired prompts for optimal learning
+- Answers are detailed (5-12 sentences) with examples and analogies
+
+### 📚 Smart Learning
+- **Anki-Style Spaced Repetition** - Again/Hard/Good/Easy ratings
+- **SM-2 Algorithm** calculates optimal review intervals
+- **ELI5 Explanations** - Get simple, child-friendly explanations
+- **Memory Mnemonics** - AI-generated memory tricks (acronyms, stories, associations)
+
+### 🎨 Modern UI
+- **Minimal ChatGPT-style interface** - Clean and distraction-free
+- **Dark Mode** - Toggle for night study sessions with glowing cards
+- **Deck Icons** - Visual grid of your flashcard collections
+- **Mobile Responsive** - Works great on phones and tablets
+
+### ⌨️ Controls
+| Input | Action |
+|-------|--------|
+| **Space / Enter** | Show answer / Flip card |
+| **1, 2, 3, 4** | Rate: Again, Hard, Good, Easy |
+| **← ↓ ↑ →** | Arrow keys for rating |
+| **Swipe Left** | Again (mobile/mouse drag) |
+| **Swipe Right** | Good (mobile/mouse drag) |
+
+### 🔐 Security
+- **BYOK (Bring Your Own Key)** - Users enter their own Claude API key
+- **Password Protection** - Secure deployed apps from unauthorized access
+- **API Key Validation** - Verify keys before allowing access
+- **Spending Limits** - Built-in cost protection
+
+### 💾 Data
+- **SQLite Database** - All flashcards persisted locally
+- **Progress Tracking** - Review stats and session summaries
+- **Export Ready** - Database file can be backed up or synced
+
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Python 3.8 or higher
-- Anthropic Claude API key ([Get one here](https://console.anthropic.com/))
+- Python 3.8+
+- Claude API key ([Get one here](https://console.anthropic.com/))
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/streamlit-flashcard-app.git
-   cd streamlit-flashcard-app
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/Sparsh22jn/streamlit-flashcard-app.git
+cd streamlit-flashcard-app
 
-2. **Create a virtual environment**
-   ```bash
-   python -m venv venv
-   
-   # On Windows
-   venv\Scripts\activate
-   
-   # On macOS/Linux
-   source venv/bin/activate
-   ```
+# Create virtual environment
+python -m venv venv
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Activate (Windows)
+venv\Scripts\activate
 
-4. **Set up environment variables**
-   ```bash
-   # Copy the example file
-   cp .env.example .env
-   
-   # Edit .env and set a password (API key is entered in the app!)
-   APP_PASSWORD=your_secure_password
-   ```
+# Activate (macOS/Linux)
+source venv/bin/activate
 
-5. **Run the app**
-   ```bash
-   streamlit run app.py
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-6. **Open in browser**
-   - Navigate to `http://localhost:8501`
-   - Enter password (if set)
-   - Enter your Claude API key
-   - Start learning!
+# Set up environment (optional - for password protection)
+cp .env.example .env
+# Edit .env and set APP_PASSWORD=your_password
 
-## 📖 How to Use
+# Run the app
+streamlit run app.py
+```
 
-### First Time Setup
-1. **Enter password** (if configured)
-2. **Enter your Claude API key** - Get one at [console.anthropic.com](https://console.anthropic.com/)
-3. **Set your spending limit** - Protect yourself from unexpected costs
+Open http://localhost:8501 in your browser.
 
-### Generating Flashcards
+---
 
-1. Go to the **Generate** page from the sidebar
-2. Enter a topic you want to learn (e.g., "Python decorators")
-3. Choose the number of flashcards (5-50)
-4. Select complexity level (Beginner/Intermediate/Advanced)
-5. Click **Generate Flashcards**
-6. Wait for AI to create your personalized flashcards
+## 📖 Usage
 
-### Reviewing Flashcards
+### 1. Authentication
+1. Enter password (if configured)
+2. Enter your Claude API key
+3. Set your spending limit
 
-1. Go to the **Review** page from the sidebar
-2. Select a flashcard set from the dropdown
-3. Click **Tap to Reveal Answer** to see the answer
-4. Rate your recall: **Again** / **Hard** / **Good** / **Easy**
-5. Use **⬅️ ELI5** for simple explanations
+### 2. Generate Flashcards
+1. Enter a topic (e.g., "Python decorators", "The French Revolution")
+2. Choose number of cards (5-30)
+3. Select complexity: Beginner / Intermediate / Advanced
+4. Click **Generate →**
+
+### 3. Review & Learn
+1. Go to **My Decks** to see all your collections
+2. Click **Study** on any deck
+3. Read the question, then **Show Answer**
+4. Rate your recall with the buttons or keyboard
+5. Use **🧒 Explain Simply** for ELI5
 6. Use **🧠 Memory Trick** for mnemonics
+
+### 4. Dark Mode
+Toggle **🌙 Dark Mode** in the sidebar for night studying with beautiful glowing card effects.
+
+---
 
 ## 🗂️ Project Structure
 
 ```
 streamlit-flashcard-app/
-├── app.py                    # Main application entry point
-├── pages/
-│   ├── 1_Generate.py        # Flashcard generation page
-│   └── 2_Review.py          # Flashcard review page
-├── database.py              # SQLite database operations
-├── flashcard_generator.py   # Claude API integration
-├── utils.py                 # Helper functions
-├── requirements.txt         # Python dependencies
-├── .env.example            # Environment variables template
-├── .gitignore              # Git ignore rules
-└── README.md               # This file
+├── app.py                 # Main entry, authentication
+├── database.py            # SQLite operations, spaced repetition
+├── flashcard_generator.py # Claude API integration, prompts
+├── utils.py               # Helper functions
+├── flashcards.db          # SQLite database (generated)
+├── requirements.txt       # Python dependencies
+├── .env                   # Environment variables (local)
+├── .env.example           # Environment template
+└── pages/
+    ├── 1_Generate.py      # Flashcard generation page
+    ├── 2_Decks.py         # Deck grid view
+    └── 3_Review.py        # Study/review page
 ```
-
-## 🗄️ Database Schema
-
-### Cardsets Table
-| Column | Type | Description |
-|--------|------|-------------|
-| cardset_id | TEXT | Primary key |
-| topic | TEXT | Topic of the flashcard set |
-| num_cards | INTEGER | Number of cards |
-| complexity_level | TEXT | Beginner/Intermediate/Advanced |
-| created_at | TIMESTAMP | Creation timestamp |
-
-### Flashcards Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER | Primary key |
-| cardset_id | TEXT | Foreign key to cardsets |
-| question | TEXT | The question |
-| answer | TEXT | The answer |
-| times_reviewed | INTEGER | Review count |
-| explanation_eli5 | TEXT | ELI5 explanation |
-| explanation_eli10 | TEXT | ELI10 explanation |
-
-## ☁️ Deployment to Streamlit Cloud
-
-### Step 1: Push to GitHub
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/yourusername/streamlit-flashcard-app.git
-git push -u origin main
-```
-
-### Step 2: Deploy on Streamlit Cloud
-
-1. Go to [share.streamlit.io](https://share.streamlit.io/)
-2. Sign in with GitHub
-3. Click "New app"
-4. Select your repository
-5. Set main file path: `app.py`
-
-### Step 3: Configure Secrets (Only Password Needed!)
-
-In Streamlit Cloud, go to **App Settings** → **Secrets** and add:
-
-```toml
-APP_PASSWORD = "your_secure_password_here"
-```
-
-> 🎉 **No API key needed in secrets!** Each user enters their own Claude API key in the app.
-
-### Step 4: Share Securely
-
-- Share the password with trusted users
-- Each user uses their OWN API key and credits
-- You pay $0 for other users' API usage!
-
-## 💰 Cost Management
-
-**BYOK Model (Bring Your Own Key):**
-- Each user enters their own Claude API key
-- Each user sets their own spending limit
-- You (the app owner) pay nothing for API costs!
-|---------|-------------|---------|
-| `SPENDING_LIMIT` | Max USD to spend on API | $10.00 |
-
-**Approximate costs (Claude 3.5 Sonnet):**
-- Generating 10 flashcards: ~$0.02-0.05
-- ELI5 explanation: ~$0.005
-- Memory mnemonic: ~$0.005
-
-## 🔐 Authentication
-
-When `APP_PASSWORD` is set:
-- Users must enter password to access any page
-- Protects your API credits from unauthorized use
-- Leave empty for local development (no password required)
-
-## 📱 Mobile Access
-
-### Local Network
-```bash
-streamlit run app.py
-# Access from phone: http://YOUR_IP:8501
-```
-
-### Cloud (Recommended)
-Deploy to Streamlit Cloud for access from anywhere!
-
-## 🔧 Configuration
-
-### Environment Variables
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Your Claude API key | Yes |
-| `SPENDING_LIMIT` | Max spend in USD | No (default: $10) |
-| `APP_PASSWORD` | Password for app access | No (recommended for deploy) |
-
-### Customization
-- Edit prompts in `flashcard_generator.py` for different card formats
-- Modify spaced repetition algorithm in `database.py`
-- Adjust UI components in page files
-
-## 🐛 Troubleshooting
-
-**"Module not found" errors**
-```bash
-pip install -r requirements.txt
-```
-
-**API authentication errors**
-- Verify your API key at [console.anthropic.com](https://console.anthropic.com/)
-- Check that `.env` file exists and has the correct key
-
-**Database locked errors**
-- Close other connections to the database
-- Restart the Streamlit app
-
-**Port already in use**
-```bash
-streamlit run app.py --server.port 8502
-```
-
-**"Could not parse flashcards" error**
-- The AI response format was unexpected
-- Try generating again with a simpler topic
-- Check your API key has sufficient credits
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- [Streamlit](https://streamlit.io/) - The amazing web framework
-- [Anthropic](https://anthropic.com/) - Claude AI for flashcard generation
-- [SQLite](https://sqlite.org/) - Lightweight database
-- [SuperMemo](https://supermemo.com/) - Spaced repetition research
 
 ---
 
-**Made with ❤️ for lifelong learners**
+## 🌐 Deployment (Streamlit Cloud)
+
+1. Push your code to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Connect your repository
+4. Add secrets in Streamlit Cloud settings:
+   ```toml
+   APP_PASSWORD = "your_secure_password"
+   ```
+5. Deploy!
+
+**Note:** The SQLite database is included in the repo. To update flashcards on cloud:
+```bash
+git add flashcards.db
+git commit -m "Update flashcard database"
+git push
+```
+
+---
+
+## 💰 Cost Information
+
+Using Claude 3.5 Sonnet API:
+- **~$0.01-0.03** per flashcard set (10 cards)
+- **~$0.002** per ELI5 explanation
+- **~$0.002** per mnemonic generation
+
+The app includes a spending limit to protect against unexpected costs.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Streamlit
+- **AI**: Claude 3.5 Sonnet (Anthropic)
+- **Database**: SQLite
+- **Algorithm**: SM-2 Spaced Repetition
+- **Deployment**: Streamlit Cloud
+
+---
+
+## 📝 License
+
+MIT License - feel free to use, modify, and distribute.
+
+---
+
+## 🙏 Acknowledgments
+
+- [Anthropic](https://anthropic.com) for Claude AI
+- [Streamlit](https://streamlit.io) for the amazing framework
+- [SuperMemo](https://supermemo.com) for the 20 Rules of Knowledge Formulation
+- [Anki](https://apps.ankiweb.net) for spaced repetition inspiration
+
+---
+
+**Made with ❤️ for smarter learning**
