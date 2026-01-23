@@ -9,7 +9,7 @@ AI-powered flashcard app for smarter learning. Generate comprehensive flashcards
 
 ## 🌐 Live Demo
 
-**[Try Smart FlashCards →](https://streamlit-flashcard-app.streamlit.app)**
+**[Try Smart FlashCards →](https://smart-flashcards.streamlit.app)**
 
 ---
 

@@ -1,67 +1,61 @@
 """
 Database module for Streamlit Flashcard App for Complex Topics.
-Handles all SQLite database operations.
+Handles all Supabase database operations.
 """
 
-import sqlite3
-from datetime import datetime
+import streamlit as st
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import uuid
+import os
+from dotenv import load_dotenv
+
+# Load .env file for local development
+load_dotenv()
+
+# Initialize Supabase client
+from supabase import create_client, Client
 
 
-DATABASE_NAME = "flashcards.db"
+def get_supabase_client() -> Client:
+    """Get Supabase client using credentials from secrets or environment."""
+    # Try Streamlit secrets first (for deployed app)
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+    except (KeyError, FileNotFoundError):
+        # Fall back to environment variables (for local development)
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+    
+    if not url or not key:
+        raise ValueError(
+            "Supabase credentials not found. Please set SUPABASE_URL and SUPABASE_KEY "
+            "in Streamlit secrets or environment variables."
+        )
+    
+    return create_client(url, key)
 
 
-def get_connection():
-    """Get a database connection with row factory for dict-like access."""
-    conn = sqlite3.connect(DATABASE_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
+@st.cache_resource
+def get_client() -> Client:
+    """Get cached Supabase client."""
+    return get_supabase_client()
 
 
 def init_database():
-    """Initialize the database with required tables."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # Create cardsets table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS cardsets (
-            cardset_id TEXT PRIMARY KEY,
-            topic TEXT NOT NULL,
-            num_cards INTEGER NOT NULL,
-            complexity_level TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    # Create flashcards table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS flashcards (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cardset_id TEXT NOT NULL,
-            topic TEXT NOT NULL,
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL,
-            complexity_level TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            times_reviewed INTEGER DEFAULT 0,
-            last_reviewed_at TIMESTAMP,
-            explanation_eli5 TEXT,
-            explanation_eli10 TEXT,
-            mnemonic TEXT,
-            FOREIGN KEY (cardset_id) REFERENCES cardsets (cardset_id)
-        )
-    """)
-    
-    # Add mnemonic column if it doesn't exist (for existing databases)
+    """
+    Initialize database connection (tables already created in Supabase).
+    This function is kept for compatibility but tables are managed in Supabase dashboard.
+    """
+    # Tables are created in Supabase dashboard, just verify connection
     try:
-        cursor.execute("ALTER TABLE flashcards ADD COLUMN mnemonic TEXT")
-    except sqlite3.OperationalError:
-        pass  # Column already exists
-    
-    conn.commit()
-    conn.close()
+        client = get_client()
+        # Quick connectivity check
+        client.table("cardsets").select("cardset_id").limit(1).execute()
+    except Exception as e:
+        st.error(f"Database connection error: {e}")
+        raise
 
 
 def create_cardset(topic: str, num_cards: int, complexity: str) -> str:
@@ -78,16 +72,13 @@ def create_cardset(topic: str, num_cards: int, complexity: str) -> str:
     """
     cardset_id = str(uuid.uuid4())[:8]  # Short unique ID
     
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO cardsets (cardset_id, topic, num_cards, complexity_level)
-        VALUES (?, ?, ?, ?)
-    """, (cardset_id, topic, num_cards, complexity))
-    
-    conn.commit()
-    conn.close()
+    client = get_client()
+    client.table("cardsets").insert({
+        "cardset_id": cardset_id,
+        "topic": topic,
+        "num_cards": num_cards,
+        "complexity_level": complexity
+    }).execute()
     
     return cardset_id
 
@@ -106,19 +97,16 @@ def save_flashcard(cardset_id: str, topic: str, question: str, answer: str, comp
     Returns:
         The ID of the inserted flashcard
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
+    result = client.table("flashcards").insert({
+        "cardset_id": cardset_id,
+        "topic": topic,
+        "question": question,
+        "answer": answer,
+        "complexity_level": complexity
+    }).execute()
     
-    cursor.execute("""
-        INSERT INTO flashcards (cardset_id, topic, question, answer, complexity_level)
-        VALUES (?, ?, ?, ?, ?)
-    """, (cardset_id, topic, question, answer, complexity))
-    
-    card_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    return card_id
+    return result.data[0]["id"]
 
 
 def save_flashcards_bulk(cardset_id: str, topic: str, flashcards: List[Dict], complexity: str):
@@ -131,17 +119,20 @@ def save_flashcards_bulk(cardset_id: str, topic: str, flashcards: List[Dict], co
         flashcards: List of dicts with 'question' and 'answer' keys
         complexity: Complexity level
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
-    for card in flashcards:
-        cursor.execute("""
-            INSERT INTO flashcards (cardset_id, topic, question, answer, complexity_level)
-            VALUES (?, ?, ?, ?, ?)
-        """, (cardset_id, topic, card['question'], card['answer'], complexity))
+    cards_to_insert = [
+        {
+            "cardset_id": cardset_id,
+            "topic": topic,
+            "question": card["question"],
+            "answer": card["answer"],
+            "complexity_level": complexity
+        }
+        for card in flashcards
+    ]
     
-    conn.commit()
-    conn.close()
+    client.table("flashcards").insert(cards_to_insert).execute()
 
 
 def get_all_cardsets() -> List[Dict]:
@@ -151,19 +142,10 @@ def get_all_cardsets() -> List[Dict]:
     Returns:
         List of cardset dictionaries
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
+    result = client.table("cardsets").select("*").order("created_at", desc=True).execute()
     
-    cursor.execute("""
-        SELECT cardset_id, topic, num_cards, complexity_level, created_at
-        FROM cardsets
-        ORDER BY created_at DESC
-    """)
-    
-    rows = cursor.fetchall()
-    conn.close()
-    
-    return [dict(row) for row in rows]
+    return result.data
 
 
 def get_flashcards_by_set(cardset_id: str) -> List[Dict]:
@@ -176,22 +158,14 @@ def get_flashcards_by_set(cardset_id: str) -> List[Dict]:
     Returns:
         List of flashcard dictionaries
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
+    result = client.table("flashcards").select(
+        "id, cardset_id, topic, question, answer, complexity_level, "
+        "created_at, times_reviewed, last_reviewed_at, "
+        "explanation_eli5, explanation_eli10, mnemonic"
+    ).eq("cardset_id", cardset_id).order("id").execute()
     
-    cursor.execute("""
-        SELECT id, cardset_id, topic, question, answer, complexity_level,
-               created_at, times_reviewed, last_reviewed_at,
-               explanation_eli5, explanation_eli10
-        FROM flashcards
-        WHERE cardset_id = ?
-        ORDER BY id
-    """, (cardset_id,))
-    
-    rows = cursor.fetchall()
-    conn.close()
-    
-    return [dict(row) for row in rows]
+    return result.data
 
 
 def get_cardset_by_id(cardset_id: str) -> Optional[Dict]:
@@ -204,19 +178,12 @@ def get_cardset_by_id(cardset_id: str) -> Optional[Dict]:
     Returns:
         Cardset dictionary or None if not found
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
+    result = client.table("cardsets").select("*").eq("cardset_id", cardset_id).execute()
     
-    cursor.execute("""
-        SELECT cardset_id, topic, num_cards, complexity_level, created_at
-        FROM cardsets
-        WHERE cardset_id = ?
-    """, (cardset_id,))
-    
-    row = cursor.fetchone()
-    conn.close()
-    
-    return dict(row) if row else None
+    if result.data:
+        return result.data[0]
+    return None
 
 
 def update_review_stats(card_id: int):
@@ -226,18 +193,17 @@ def update_review_stats(card_id: int):
     Args:
         card_id: The ID of the flashcard
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
-    cursor.execute("""
-        UPDATE flashcards
-        SET times_reviewed = times_reviewed + 1,
-            last_reviewed_at = ?
-        WHERE id = ?
-    """, (datetime.now(), card_id))
+    # First get current times_reviewed
+    result = client.table("flashcards").select("times_reviewed").eq("id", card_id).execute()
+    current_reviews = result.data[0]["times_reviewed"] if result.data else 0
     
-    conn.commit()
-    conn.close()
+    # Update with incremented value
+    client.table("flashcards").update({
+        "times_reviewed": (current_reviews or 0) + 1,
+        "last_reviewed_at": datetime.now().isoformat()
+    }).eq("id", card_id).execute()
 
 
 def save_explanation(card_id: int, explanation_type: str, explanation_text: str):
@@ -249,18 +215,12 @@ def save_explanation(card_id: int, explanation_type: str, explanation_text: str)
         explanation_type: Either 'eli5' or 'eli10'
         explanation_text: The explanation text
     """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
+    client = get_client()
     column = f"explanation_{explanation_type}"
-    cursor.execute(f"""
-        UPDATE flashcards
-        SET {column} = ?
-        WHERE id = ?
-    """, (explanation_text, card_id))
     
-    conn.commit()
-    conn.close()
+    client.table("flashcards").update({
+        column: explanation_text
+    }).eq("id", card_id).execute()
 
 
 def get_explanation(card_id: int, explanation_type: str) -> Optional[str]:
@@ -274,21 +234,13 @@ def get_explanation(card_id: int, explanation_type: str) -> Optional[str]:
     Returns:
         The explanation text or None if not found
     """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
+    client = get_client()
     column = f"explanation_{explanation_type}"
-    cursor.execute(f"""
-        SELECT {column}
-        FROM flashcards
-        WHERE id = ?
-    """, (card_id,))
     
-    row = cursor.fetchone()
-    conn.close()
+    result = client.table("flashcards").select(column).eq("id", card_id).execute()
     
-    if row and row[0]:
-        return row[0]
+    if result.data and result.data[0].get(column):
+        return result.data[0][column]
     return None
 
 
@@ -300,17 +252,11 @@ def save_mnemonic(card_id: int, mnemonic_text: str):
         card_id: The ID of the flashcard
         mnemonic_text: The mnemonic text
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
-    cursor.execute("""
-        UPDATE flashcards
-        SET mnemonic = ?
-        WHERE id = ?
-    """, (mnemonic_text, card_id))
-    
-    conn.commit()
-    conn.close()
+    client.table("flashcards").update({
+        "mnemonic": mnemonic_text
+    }).eq("id", card_id).execute()
 
 
 def get_mnemonic(card_id: int) -> Optional[str]:
@@ -323,20 +269,12 @@ def get_mnemonic(card_id: int) -> Optional[str]:
     Returns:
         The mnemonic text or None if not found
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
-    cursor.execute("""
-        SELECT mnemonic
-        FROM flashcards
-        WHERE id = ?
-    """, (card_id,))
+    result = client.table("flashcards").select("mnemonic").eq("id", card_id).execute()
     
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row and row[0]:
-        return row[0]
+    if result.data and result.data[0].get("mnemonic"):
+        return result.data[0]["mnemonic"]
     return None
 
 
@@ -347,17 +285,21 @@ def delete_cardset(cardset_id: str):
     Args:
         cardset_id: The ID of the cardset to delete
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
-    # Delete flashcards first (foreign key constraint)
-    cursor.execute("DELETE FROM flashcards WHERE cardset_id = ?", (cardset_id,))
+    # Get all flashcard IDs for this cardset to delete their progress
+    flashcards = client.table("flashcards").select("id").eq("cardset_id", cardset_id).execute()
+    card_ids = [f["id"] for f in flashcards.data]
+    
+    # Delete card progress for these flashcards
+    if card_ids:
+        client.table("card_progress").delete().in_("card_id", card_ids).execute()
+    
+    # Delete flashcards (CASCADE should handle this, but being explicit)
+    client.table("flashcards").delete().eq("cardset_id", cardset_id).execute()
     
     # Delete cardset
-    cursor.execute("DELETE FROM cardsets WHERE cardset_id = ?", (cardset_id,))
-    
-    conn.commit()
-    conn.close()
+    client.table("cardsets").delete().eq("cardset_id", cardset_id).execute()
 
 
 # ============================================
@@ -365,41 +307,22 @@ def delete_cardset(cardset_id: str):
 # ============================================
 
 def init_spaced_repetition_table():
-    """Initialize the spaced repetition tracking table."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS card_progress (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            card_id INTEGER UNIQUE NOT NULL,
-            ease_factor REAL DEFAULT 2.5,
-            interval_days INTEGER DEFAULT 0,
-            repetitions INTEGER DEFAULT 0,
-            next_review_date TEXT,
-            last_review_date TEXT,
-            FOREIGN KEY (card_id) REFERENCES flashcards (id)
-        )
-    """)
-    
-    conn.commit()
-    conn.close()
+    """
+    Initialize spaced repetition tracking (table already created in Supabase).
+    This function is kept for compatibility.
+    """
+    # Table is created in Supabase dashboard
+    pass
 
 
 def get_card_progress(card_id: int) -> Optional[Dict]:
     """Get spaced repetition progress for a card."""
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
-    cursor.execute("""
-        SELECT * FROM card_progress WHERE card_id = ?
-    """, (card_id,))
+    result = client.table("card_progress").select("*").eq("card_id", card_id).execute()
     
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        return dict(row)
+    if result.data:
+        return result.data[0]
     return None
 
 
@@ -414,17 +337,13 @@ def update_card_progress(card_id: int, rating: str) -> Dict:
     Returns:
         Dict with new interval and next review date
     """
-    from datetime import datetime, timedelta
-    
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
     # Get existing progress or create new
-    cursor.execute("SELECT * FROM card_progress WHERE card_id = ?", (card_id,))
-    row = cursor.fetchone()
+    result = client.table("card_progress").select("*").eq("card_id", card_id).execute()
     
-    if row:
-        progress = dict(row)
+    if result.data:
+        progress = result.data[0]
     else:
         progress = {
             'card_id': card_id,
@@ -484,19 +403,22 @@ def update_card_progress(card_id: int, rating: str) -> Dict:
         next_review = now + timedelta(days=interval)
     
     # Upsert progress
-    cursor.execute("""
-        INSERT INTO card_progress (card_id, ease_factor, interval_days, repetitions, next_review_date, last_review_date)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(card_id) DO UPDATE SET
-            ease_factor = excluded.ease_factor,
-            interval_days = excluded.interval_days,
-            repetitions = excluded.repetitions,
-            next_review_date = excluded.next_review_date,
-            last_review_date = excluded.last_review_date
-    """, (card_id, ease_factor, interval, reps, next_review.isoformat(), now.isoformat()))
+    progress_data = {
+        "card_id": card_id,
+        "ease_factor": ease_factor,
+        "interval_days": interval,
+        "repetitions": reps,
+        "next_review_date": next_review.isoformat(),
+        "last_review_date": now.isoformat()
+    }
     
-    conn.commit()
-    conn.close()
+    # Try to update, if no rows affected, insert
+    existing = client.table("card_progress").select("id").eq("card_id", card_id).execute()
+    
+    if existing.data:
+        client.table("card_progress").update(progress_data).eq("card_id", card_id).execute()
+    else:
+        client.table("card_progress").insert(progress_data).execute()
     
     # Also update the flashcards table
     update_review_stats(card_id)
@@ -569,25 +491,45 @@ def get_next_intervals(card_id: int) -> Dict[str, str]:
 
 def get_due_cards(cardset_id: str) -> List[Dict]:
     """Get cards that are due for review."""
-    from datetime import datetime
-    
-    conn = get_connection()
-    cursor = conn.cursor()
+    client = get_client()
     
     now = datetime.now().isoformat()
     
-    # Get cards that are due or new (no progress entry)
-    cursor.execute("""
-        SELECT f.*, cp.next_review_date, cp.interval_days, cp.ease_factor, cp.repetitions
-        FROM flashcards f
-        LEFT JOIN card_progress cp ON f.id = cp.card_id
-        WHERE f.cardset_id = ?
-        AND (cp.next_review_date IS NULL OR cp.next_review_date <= ?)
-        ORDER BY cp.next_review_date ASC NULLS FIRST
-    """, (cardset_id, now))
+    # Get all flashcards for this cardset
+    flashcards_result = client.table("flashcards").select("*").eq("cardset_id", cardset_id).execute()
+    flashcards = flashcards_result.data
     
-    rows = cursor.fetchall()
-    conn.close()
+    if not flashcards:
+        return []
     
-    return [dict(row) for row in rows]
+    # Get card IDs
+    card_ids = [f["id"] for f in flashcards]
+    
+    # Get progress for these cards
+    progress_result = client.table("card_progress").select("*").in_("card_id", card_ids).execute()
+    progress_map = {p["card_id"]: p for p in progress_result.data}
+    
+    # Filter and combine: cards with no progress (new) or due cards
+    due_cards = []
+    for card in flashcards:
+        progress = progress_map.get(card["id"])
+        if progress is None:
+            # New card - no progress entry
+            card["next_review_date"] = None
+            card["interval_days"] = None
+            card["ease_factor"] = None
+            card["repetitions"] = None
+            due_cards.append(card)
+        elif progress["next_review_date"] is None or progress["next_review_date"] <= now:
+            # Due for review
+            card["next_review_date"] = progress["next_review_date"]
+            card["interval_days"] = progress["interval_days"]
+            card["ease_factor"] = progress["ease_factor"]
+            card["repetitions"] = progress["repetitions"]
+            due_cards.append(card)
+    
+    # Sort: new cards first (None), then by next_review_date
+    due_cards.sort(key=lambda x: (x["next_review_date"] is not None, x["next_review_date"] or ""))
+    
+    return due_cards
 
