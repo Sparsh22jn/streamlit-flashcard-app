@@ -186,6 +186,45 @@ def get_cardset_by_id(cardset_id: str) -> Optional[Dict]:
     return None
 
 
+def get_review_order(cardset_id: str) -> str:
+    """
+    Get the review order preference for a cardset.
+    
+    Args:
+        cardset_id: The ID of the cardset
+    
+    Returns:
+        'ordered' or 'random' (defaults to 'ordered' if not set)
+    """
+    client = get_client()
+    try:
+        result = client.table("cardsets").select("review_order").eq("cardset_id", cardset_id).execute()
+        if result.data and result.data[0].get("review_order"):
+            return result.data[0]["review_order"]
+    except Exception:
+        # Column might not exist yet
+        pass
+    return "ordered"
+
+
+def set_review_order(cardset_id: str, order: str):
+    """
+    Set the review order preference for a cardset.
+    
+    Args:
+        cardset_id: The ID of the cardset
+        order: 'ordered' or 'random'
+    """
+    client = get_client()
+    try:
+        client.table("cardsets").update({
+            "review_order": order
+        }).eq("cardset_id", cardset_id).execute()
+    except Exception as e:
+        # Column might not exist - user needs to add it in Supabase
+        st.warning(f"Could not save review order preference. Please add 'review_order' column (type: text) to the cardsets table in Supabase.")
+
+
 def update_review_stats(card_id: int):
     """
     Update the review statistics for a flashcard.

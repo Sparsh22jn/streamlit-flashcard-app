@@ -4,8 +4,12 @@ Generate Flashcards - Minimal ChatGPT-style Interface
 
 import streamlit as st
 import os
+from dotenv import load_dotenv
 from database import init_database, create_cardset, save_flashcards_bulk, get_all_cardsets
 from flashcard_generator import generate_flashcards
+from utils import get_base_css, render_header
+
+load_dotenv()
 
 # Auth check
 def check_auth():
@@ -30,95 +34,45 @@ init_database()
 
 # Page config
 st.set_page_config(
-    page_title="Smart FlashCards",
+    page_title="Generate | Smart FlashCards",
     page_icon="🧠",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# Minimal CSS
+# Initialize dark mode
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = True
+
+# Apply theme CSS
+st.markdown(get_base_css(st.session_state.dark_mode), unsafe_allow_html=True)
+
+# Page-specific CSS
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Hide app.py from sidebar */
-    [data-testid="stSidebarNav"] li:first-child {display: none;}
-    
-    /* Fix layout */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 1rem;
         max-width: 700px;
     }
     
-    /* Reduce header padding */
     header[data-testid="stHeader"] {
         height: 0;
-    }
-    
-    /* Main title */
-    .gen-title {
-        font-size: 1.8rem;
-        font-weight: 600;
-        text-align: center;
-        margin-bottom: 0.25rem;
-        margin-top: 0;
-    }
-    .gen-subtitle {
-        text-align: center;
-        color: #666;
-        font-size: 0.9rem;
-        margin-bottom: 1.5rem;
     }
     
     /* Input area */
     .stTextArea textarea {
         border-radius: 16px;
-        border: 1px solid #ddd;
         padding: 16px;
         font-size: 1rem;
         min-height: 100px;
     }
-    .stTextArea textarea:focus {
-        border-color: #10a37f;
-        box-shadow: 0 0 0 1px #10a37f;
-    }
-    
-    /* Options row */
-    .options-row {
-        display: flex;
-        gap: 1rem;
-        margin: 1rem 0;
-    }
     
     /* Generate button */
     .stButton > button[kind="primary"] {
-        background: #10a37f;
-        border: none;
-        border-radius: 12px;
         padding: 14px 28px;
         font-weight: 500;
         font-size: 1rem;
-    }
-    .stButton > button[kind="primary"]:hover {
-        background: #0d8a6b;
-    }
-    
-    /* Suggestion chips */
-    .chip {
-        display: inline-block;
-        background: #f0f0f0;
-        padding: 8px 16px;
-        border-radius: 20px;
-        margin: 4px;
-        font-size: 0.85rem;
-        color: #444;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .chip:hover {
-        background: #e0e0e0;
     }
     
     /* Success card */
@@ -126,9 +80,12 @@ st.markdown("""
         background: linear-gradient(135deg, #10a37f 0%, #0d8a6b 100%);
         border-radius: 16px;
         padding: 24px;
-        color: white;
+        color: white !important;
         text-align: center;
         margin: 1rem 0;
+    }
+    .success-card h3, .success-card p {
+        color: white !important;
     }
     
     /* Preview card */
@@ -141,49 +98,20 @@ st.markdown("""
     }
     .preview-q {
         font-weight: 600;
-        color: #333;
+        color: #333 !important;
         margin-bottom: 8px;
     }
     .preview-a {
-        color: #666;
+        color: #666 !important;
         font-size: 0.9rem;
-    }
-    
-    /* Nav link */
-    .nav-link {
-        text-align: center;
-        margin-top: 1rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize dark mode
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
-
-# Dark mode CSS override
+# Dark mode specific overrides
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
-        .stApp { background-color: #0d1117 !important; }
-        [data-testid="stSidebar"] { background-color: #161b22 !important; }
-        [data-testid="stSidebar"] * { color: #c9d1d9 !important; }
-        p, span, div, h1, h2, h3, h4, label { color: #c9d1d9 !important; }
-        .gen-title, .gen-subtitle { color: #c9d1d9 !important; }
-        .stTextArea textarea { 
-            background-color: #161b22 !important; 
-            color: #c9d1d9 !important;
-            border-color: #30363d !important;
-        }
-        .stButton > button {
-            background-color: #21262d !important;
-            border: 1px solid #30363d !important;
-            color: #c9d1d9 !important;
-        }
-        .stButton > button[kind="primary"] {
-            background: #238636 !important;
-            border: none !important;
-        }
         .success-card {
             background: linear-gradient(135deg, #238636 0%, #1a7f37 100%) !important;
             box-shadow: 0 0 20px rgba(35, 134, 54, 0.3);
@@ -202,6 +130,8 @@ if 'generated_cards' not in st.session_state:
     st.session_state.generated_cards = None
 if 'last_topic' not in st.session_state:
     st.session_state.last_topic = None
+if 'selected_topic' not in st.session_state:
+    st.session_state.selected_topic = ""
 
 # Minimal navigation in sidebar
 with st.sidebar:
@@ -225,16 +155,22 @@ with st.sidebar:
         del st.session_state["api_key_validated"]
         st.switch_page("app.py")
 
-# Main content
-st.markdown('<p class="gen-title">🧠 Smart FlashCards</p>', unsafe_allow_html=True)
-st.markdown('<p class="gen-subtitle">AI-powered flashcards for smarter learning</p>', unsafe_allow_html=True)
+# Main content - Header
+render_header()
+st.caption("AI-powered flashcards for smarter learning", help=None)
+
+# Handle topic suggestion - set directly in widget state before rendering
+if 'selected_topic' in st.session_state and st.session_state.selected_topic:
+    st.session_state.topic_input = st.session_state.selected_topic
+    st.session_state.selected_topic = ""  # Clear after use
 
 # Topic input
 topic = st.text_area(
     "Topic",
     placeholder="e.g., Python decorators, The French Revolution, Quantum physics...",
     label_visibility="collapsed",
-    height=80
+    height=80,
+    key="topic_input"
 )
 
 # Options row
@@ -331,19 +267,13 @@ if st.session_state.generated_cards is None:
         "Data structures"
     ]
     
-    # Display as chips
+    # Display as clickable buttons that auto-fill the input
     cols = st.columns(3)
     for i, suggestion in enumerate(suggestions):
         with cols[i % 3]:
             if st.button(suggestion, key=f"sug_{i}", use_container_width=True):
-                st.session_state.topic_suggestion = suggestion
+                st.session_state.selected_topic = suggestion
                 st.rerun()
-    
-    # Load suggestion into input if clicked
-    if 'topic_suggestion' in st.session_state:
-        topic = st.session_state.topic_suggestion
-        del st.session_state.topic_suggestion
-        st.rerun()
 
 # Quick link to decks
 existing_sets = get_all_cardsets()

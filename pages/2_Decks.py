@@ -4,8 +4,11 @@ Decks Page - View all flashcard sets as icons/cards
 
 import streamlit as st
 import os
+from dotenv import load_dotenv
 from database import init_database, get_all_cardsets, delete_cardset
-from utils import get_complexity_emoji
+from utils import get_complexity_emoji, get_base_css, render_header
+
+load_dotenv()
 
 # Auth check
 def check_auth():
@@ -36,38 +39,23 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Minimal CSS
+# Initialize dark mode
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = True
+
+# Apply theme CSS
+st.markdown(get_base_css(st.session_state.dark_mode), unsafe_allow_html=True)
+
+# Page-specific CSS
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Hide app.py from sidebar */
-    [data-testid="stSidebarNav"] li:first-child {display: none;}
-    
     .block-container {
         padding-top: 1rem;
         max-width: 800px;
     }
     
-    /* Title */
-    .decks-title {
-        font-size: 2rem;
-        font-weight: 600;
-        text-align: center;
-        margin-bottom: 0.25rem;
-    }
-    .decks-subtitle {
-        text-align: center;
-        color: #666;
-        font-size: 0.95rem;
-        margin-bottom: 2rem;
-    }
-    
     /* Deck card */
     .deck-card {
-        background: white;
-        border: 1px solid #e0e0e0;
         border-radius: 16px;
         padding: 20px;
         margin: 12px 0;
@@ -91,7 +79,6 @@ st.markdown("""
     .deck-topic {
         font-size: 1.1rem;
         font-weight: 600;
-        color: #333;
         margin-bottom: 4px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -122,55 +109,47 @@ st.markdown("""
         margin-bottom: 1rem;
         opacity: 0.5;
     }
-    
-    /* Action buttons */
-    .stButton > button {
-        border-radius: 12px;
-    }
-    .stButton > button[kind="primary"] {
-        background: #10a37f;
-        border: none;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize dark mode
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
-
-# Dark mode CSS override
+# Dark mode specific overrides
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
-        .stApp { background-color: #0d1117 !important; }
-        [data-testid="stSidebar"] { background-color: #161b22 !important; }
-        [data-testid="stSidebar"] * { color: #c9d1d9 !important; }
-        p, span, div, h1, h2, h3, h4, label { color: #c9d1d9 !important; }
-        .decks-title, .decks-subtitle { color: #c9d1d9 !important; }
         .deck-card {
             background: #161b22 !important;
-            border-color: #30363d !important;
+            border: 1px solid #30363d !important;
         }
         .deck-card:hover {
             border-color: #238636 !important;
-            box-shadow: 0 0 20px rgba(35, 134, 54, 0.3) !important;
+            box-shadow: 0 4px 16px rgba(35, 134, 54, 0.2) !important;
         }
         .deck-topic { color: #c9d1d9 !important; }
         .deck-meta { color: #8b949e !important; }
-        .deck-badge {
-            background: #21262d !important;
+        .deck-badge { 
+            background: #21262d !important; 
             color: #8b949e !important;
         }
-        .empty-state { color: #8b949e !important; }
-        .stButton > button {
-            background-color: #21262d !important;
-            border: 1px solid #30363d !important;
-            color: #c9d1d9 !important;
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <style>
+        .deck-card {
+            background: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
         }
-        .stButton > button[kind="primary"] {
-            background: #238636 !important;
-            border: none !important;
+        .deck-card:hover {
+            border-color: #10a37f !important;
+            box-shadow: 0 4px 16px rgba(16,163,127,0.15) !important;
         }
+        .deck-topic { color: #1a1a1a !important; }
+        .deck-meta { color: #666666 !important; }
+        .deck-badge { 
+            background: #f0f0f0 !important; 
+            color: #555555 !important;
+        }
+        .empty-state { color: #666666 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -192,9 +171,9 @@ with st.sidebar:
     st.markdown("---")
     st.caption(f"💰 Limit: ${st.session_state.get('user_spending_limit', 5.0):.2f}")
 
-# Main content
-st.markdown('<p class="decks-title">📚 My Decks</p>', unsafe_allow_html=True)
-st.markdown('<p class="decks-subtitle">Your flashcard collections</p>', unsafe_allow_html=True)
+# Main content - Header
+render_header()
+st.caption("Your flashcard collections")
 
 # Get all cardsets
 cardsets = get_all_cardsets()

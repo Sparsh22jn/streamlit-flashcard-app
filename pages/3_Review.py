@@ -5,6 +5,8 @@ Review Flashcards - With Dark Mode & Swipe Gestures
 import streamlit as st
 import streamlit.components.v1 as components
 import os
+import random
+from dotenv import load_dotenv
 from database import (
     init_database, 
     get_all_cardsets, 
@@ -18,9 +20,13 @@ from database import (
     save_explanation,
     get_mnemonic,
     save_mnemonic,
+    get_review_order,
+    set_review_order,
 )
 from flashcard_generator import generate_eli_explanation, generate_mnemonic
-from utils import get_complexity_emoji
+from utils import get_complexity_emoji, get_base_css, render_header
+
+load_dotenv()
 
 # Auth check
 def check_auth():
@@ -54,9 +60,12 @@ st.set_page_config(
 
 # Initialize dark mode in session state
 if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
+    st.session_state.dark_mode = True
 
 dark = st.session_state.dark_mode
+
+# Apply base theme CSS
+st.markdown(get_base_css(dark), unsafe_allow_html=True)
 
 # Dynamic CSS based on theme
 def get_theme_css():
@@ -106,13 +115,47 @@ def get_theme_css():
                 margin-bottom: 1.5rem;
             }
             
+            /* 3D Flip Card Container */
+            .flip-card {
+                perspective: 1000px;
+                width: 100%;
+                min-height: 280px;
+                margin-bottom: 1rem;
+            }
+            .flip-card-inner {
+                position: relative;
+                width: 100%;
+                min-height: 280px;
+                transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-style: preserve-3d;
+            }
+            .flip-card-inner.flipped {
+                transform: rotateY(180deg);
+            }
+            .flip-card-front, .flip-card-back {
+                position: absolute;
+                width: 100%;
+                min-height: 280px;
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
+            .flip-card-back {
+                transform: rotateY(180deg);
+            }
+            /* Static card (no flip) */
+            .static-card {
+                width: 100%;
+                min-height: 280px;
+            }
+            
             /* Question card - dark with glow */
             .q-card {
                 background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
                 color: white;
                 border-radius: 20px;
                 padding: 40px 32px;
-                min-height: 240px;
+                min-height: 280px;
+                height: 100%;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -120,6 +163,7 @@ def get_theme_css():
                 text-align: center;
                 border: 1px solid #30363d;
                 box-shadow: 0 0 30px rgba(88, 166, 255, 0.15);
+                box-sizing: border-box;
             }
             
             /* Answer card - dark with green glow */
@@ -128,7 +172,8 @@ def get_theme_css():
                 color: white;
                 border-radius: 20px;
                 padding: 40px 32px;
-                min-height: 240px;
+                min-height: 280px;
+                height: 100%;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -136,6 +181,7 @@ def get_theme_css():
                 text-align: center;
                 border: 1px solid #238636;
                 box-shadow: 0 0 30px rgba(16, 163, 127, 0.3);
+                box-sizing: border-box;
             }
             
             .card-label {
@@ -254,32 +300,81 @@ def get_theme_css():
                 margin-bottom: 1.5rem;
             }
             
-            /* Question card */
-            .q-card {
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                color: white;
-                border-radius: 20px;
-                padding: 40px 32px;
-                min-height: 240px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
+            /* 3D Flip Card Container */
+            .flip-card {
+                perspective: 1000px;
+                width: 100%;
+                min-height: 280px;
+                margin-bottom: 1rem;
+            }
+            .flip-card-inner {
+                position: relative;
+                width: 100%;
+                min-height: 280px;
+                transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-style: preserve-3d;
+            }
+            .flip-card-inner.flipped {
+                transform: rotateY(180deg);
+            }
+            .flip-card-front, .flip-card-back {
+                position: absolute;
+                width: 100%;
+                min-height: 280px;
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
+            .flip-card-back {
+                transform: rotateY(180deg);
+            }
+            /* Static card (no flip) */
+            .static-card {
+                width: 100%;
+                min-height: 280px;
             }
             
-            /* Answer card */
-            .a-card {
-                background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
-                color: white;
+            /* Question card - Light mode: blue gradient */
+            .q-card {
+                background: linear-gradient(135deg, #e8f4fd 0%, #d0e8f8 100%);
+                color: #1a365d !important;
                 border-radius: 20px;
                 padding: 40px 32px;
-                min-height: 240px;
+                min-height: 280px;
+                height: 100%;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
                 text-align: center;
+                border: 1px solid #b3d4fc;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                box-sizing: border-box;
+            }
+            .q-card .card-label,
+            .q-card .card-content {
+                color: #1a365d !important;
+            }
+            
+            /* Answer card - Light mode: green gradient */
+            .a-card {
+                background: linear-gradient(135deg, #e6f7ef 0%, #c6f0d9 100%);
+                color: #1a4731 !important;
+                border-radius: 20px;
+                padding: 40px 32px;
+                min-height: 280px;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                border: 1px solid #86d4a8;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                box-sizing: border-box;
+            }
+            .a-card .card-label,
+            .a-card .card-content {
+                color: #1a4731 !important;
             }
             
             .card-label {
@@ -294,26 +389,34 @@ def get_theme_css():
                 line-height: 1.7;
             }
             
-            /* ELI5 card */
+            /* ELI5 card - Light mode: pink/coral */
             .eli5-card {
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                color: white;
+                background: linear-gradient(135deg, #fef0f5 0%, #fde2e9 100%);
+                color: #831843 !important;
                 border-radius: 16px;
                 padding: 24px;
                 margin-top: 12px;
                 text-align: center;
+                border: 1px solid #f9a8c9;
+            }
+            .eli5-card .card-label,
+            .eli5-card .card-content {
+                color: #831843 !important;
             }
             
-            /* Mnemonic card */
+            /* Mnemonic card - Light mode: purple */
             .mnem-card {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+                background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+                color: #4c1d95 !important;
                 border-radius: 16px;
                 padding: 24px;
                 margin-top: 12px;
                 text-align: left;
+                border: 1px solid #c4b5fd;
             }
+            .mnem-card .card-label,
             .mnem-card .card-content {
+                color: #4c1d95 !important;
                 font-size: 0.95rem;
                 text-align: left;
             }
@@ -414,29 +517,50 @@ components.html("""
             case '4':  // 4 = Easy
                 clickButton('Easy');
                 break;
-            case 'ArrowLeft':  // Left arrow = Again
-                clickButton('Again');
+            case 'ArrowLeft':  // Left arrow = Again (or Show Answer if question)
+            case 'ArrowDown':  // Down arrow = Hard (or Show Answer if question)
+                e.preventDefault();
+                if (!clickButton('Again') && !clickButton('Hard')) {
+                    // No rating buttons visible, try to show answer
+                    const showBtn = Array.from(doc.querySelectorAll('button')).find(b => 
+                        b.textContent.includes('Show Answer'));
+                    if (showBtn) showBtn.click();
+                }
                 break;
-            case 'ArrowRight':  // Right arrow = Good
-                clickButton('Good');
-                break;
-            case 'ArrowUp':  // Up arrow = Easy
-                clickButton('Easy');
-                break;
-            case 'ArrowDown':  // Down arrow = Hard
-                clickButton('Hard');
+            case 'ArrowRight':  // Right arrow = Good (or Show Answer if question)
+            case 'ArrowUp':  // Up arrow = Easy (or Show Answer if question)
+                e.preventDefault();
+                if (!clickButton('Good') && !clickButton('Easy')) {
+                    // No rating buttons visible, try to show answer
+                    const showBtn = Array.from(doc.querySelectorAll('button')).find(b => 
+                        b.textContent.includes('Show Answer'));
+                    if (showBtn) showBtn.click();
+                }
                 break;
         }
     });
     
     function clickButton(text) {
         const btn = Array.from(doc.querySelectorAll('button')).find(b => b.textContent.includes(text));
-        if (btn) btn.click();
+        if (btn) {
+            btn.click();
+            return true;
+        }
+        return false;
     }
     
     function handleSwipe(distance) {
         if (Math.abs(distance) < minSwipeDistance) return;
         
+        // First check if there's a Show Answer button (question side)
+        const showBtn = Array.from(doc.querySelectorAll('button')).find(b => 
+            b.textContent.includes('Show Answer'));
+        if (showBtn) {
+            showBtn.click();
+            return;
+        }
+        
+        // Otherwise, do rating swipe
         if (distance > 0) {
             // Swipe right - Good
             clickButton('Good');
@@ -469,7 +593,7 @@ if 'show_mnemonic' not in st.session_state:
 cardsets = get_all_cardsets()
 
 if not cardsets:
-    st.markdown("### 📖 Review")
+    render_header()
     st.info("No decks found. Create your first deck to start studying!")
     if st.button("✨ Create Deck", type="primary"):
         st.switch_page("pages/1_Generate.py")
@@ -523,54 +647,130 @@ with st.sidebar:
         st.caption(f"🟢 {stats['good']} good • 🔴 {stats['again']} again")
 
 # Get flashcards
-flashcards = get_flashcards_by_set(st.session_state.selected_cardset)
+flashcards_original = get_flashcards_by_set(st.session_state.selected_cardset)
 cardset_info = get_cardset_by_id(st.session_state.selected_cardset)
 
-if not flashcards:
+if not flashcards_original:
     st.error("No flashcards found in this deck.")
     st.stop()
 
+# Render header
+render_header()
+
+# Review order toggle - stored per cardset in database
+current_order = get_review_order(st.session_state.selected_cardset)
+is_randomized = (current_order == "random")
+
+# Shuffle key for this cardset
+shuffle_key = f"shuffled_cards_{st.session_state.selected_cardset}"
+
+col1, col2 = st.columns([3, 1])
+with col2:
+    # Use a checkbox-style toggle for clarity
+    new_is_randomized = st.selectbox(
+        "Card Order",
+        options=["In Order", "Randomized"],
+        index=1 if is_randomized else 0,
+        label_visibility="collapsed",
+        key="order_select"
+    ) == "Randomized"
+
+# Handle order change - save to DB but DON'T reset card index
+if new_is_randomized != is_randomized:
+    new_order_value = "random" if new_is_randomized else "ordered"
+    set_review_order(st.session_state.selected_cardset, new_order_value)
+    # Clear shuffled cards so they get regenerated with new seed
+    if shuffle_key in st.session_state:
+        del st.session_state[shuffle_key]
+    # Don't reset card index - continue from current position
+    st.rerun()
+
+# Apply randomization if needed - use the SAVED value from database
+if is_randomized:
+    # Create stable shuffled order for this session
+    if shuffle_key not in st.session_state:
+        shuffled = flashcards_original.copy()
+        # Use a seed based on cardset_id for reproducible shuffle within session
+        random.seed(hash(st.session_state.selected_cardset + str(id(st.session_state))))
+        random.shuffle(shuffled)
+        random.seed()  # Reset seed
+        st.session_state[shuffle_key] = shuffled
+    flashcards = st.session_state[shuffle_key]
+else:
+    # Clear any cached shuffle when switching to ordered
+    if shuffle_key in st.session_state:
+        del st.session_state[shuffle_key]
+    flashcards = flashcards_original
+
 total_cards = len(flashcards)
 current_index = st.session_state.current_card_index
+
+# Ensure index is within bounds
+if current_index >= total_cards:
+    current_index = 0
+    st.session_state.current_card_index = 0
+
 current_card = flashcards[current_index]
+
+# Find original card number (position in original ordered list)
+original_card_num = None
+if is_randomized:
+    for i, card in enumerate(flashcards_original):
+        if card['id'] == current_card['id']:
+            original_card_num = i + 1
+            break
 
 # Progress bar
 progress_pct = ((current_index + 1) / total_cards) * 100
+progress_text = f"{current_index + 1} / {total_cards}"
+if is_randomized and original_card_num:
+    progress_text += f" &nbsp;•&nbsp; Card #{original_card_num}"
+
 st.markdown(f"""
 <div class="progress-bar">
     <div class="progress-fill" style="width: {progress_pct}%"></div>
 </div>
-<div class="progress-text">{current_index + 1} / {total_cards}</div>
+<div class="progress-text">{progress_text}</div>
 """, unsafe_allow_html=True)
 
 # Get intervals for rating buttons
 intervals = get_next_intervals(current_card['id'])
 
-# Display flashcard
+# Display flashcard with flip animation
+flipped_class = "flipped" if st.session_state.show_answer else ""
+
+st.markdown(f"""
+<div class="flip-card">
+    <div class="flip-card-inner {flipped_class}">
+        <div class="flip-card-front">
+            <div class="q-card">
+                <div class="card-label">Question</div>
+                <div class="card-content">{current_card['question']}</div>
+            </div>
+        </div>
+        <div class="flip-card-back">
+            <div class="a-card">
+                <div class="card-label">Answer</div>
+                <div class="card-content">{current_card['answer']}</div>
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 if not st.session_state.show_answer:
-    # Question side
-    st.markdown(f"""
-    <div class="q-card">
-        <div class="card-label">Question</div>
-        <div class="card-content">{current_card['question']}</div>
+    # Controls hint for question side
+    st.markdown("""
+    <div class="swipe-hint">
+        ⌨️ <b>Space</b> or <b>Arrow keys</b> to reveal • 📱 Swipe or drag to flip
     </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
     
     if st.button("Show Answer", use_container_width=True, type="primary"):
         st.session_state.show_answer = True
         update_review_stats(current_card['id'])
         st.rerun()
 else:
-    # Answer side
-    st.markdown(f"""
-    <div class="a-card">
-        <div class="card-label">Answer</div>
-        <div class="card-content">{current_card['answer']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
     # Controls hint
     st.markdown("""
     <div class="swipe-hint">

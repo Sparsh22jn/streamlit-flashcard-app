@@ -366,3 +366,232 @@ def get_explanation_css() -> str:
     }
     </style>
     """
+
+
+def get_base_css(dark_mode: bool = True) -> str:
+    """
+    Get base CSS for all pages with proper light/dark mode support.
+    
+    Args:
+        dark_mode: Whether dark mode is enabled (default: True)
+    
+    Returns:
+        CSS string
+    """
+    if dark_mode:
+        return """
+        <style>
+            /* Dark mode */
+            .stApp {
+                background-color: #0d1117 !important;
+            }
+            
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            [data-testid="stSidebarNav"] li:first-child {display: none;}
+            
+            /* Dark sidebar */
+            [data-testid="stSidebar"] {
+                background-color: #161b22 !important;
+            }
+            [data-testid="stSidebar"] * {
+                color: #c9d1d9 !important;
+            }
+            
+            /* Text colors */
+            p, span, div, h1, h2, h3, h4, label { 
+                color: #c9d1d9 !important; 
+            }
+            
+            /* App header */
+            .app-header {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 12px 0;
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #30363d;
+            }
+            .app-header-logo {
+                font-size: 1.8rem;
+            }
+            .app-header-title {
+                font-size: 1.4rem;
+                font-weight: 600;
+                color: #c9d1d9 !important;
+                margin: 0;
+            }
+            
+            /* Inputs */
+            .stTextArea textarea, .stTextInput input {
+                background-color: #161b22 !important;
+                color: #c9d1d9 !important;
+                border: 1px solid #30363d !important;
+                border-radius: 12px;
+            }
+            .stTextArea textarea:focus, .stTextInput input:focus {
+                border-color: #238636 !important;
+                box-shadow: 0 0 0 1px #238636 !important;
+            }
+            
+            /* Buttons */
+            .stButton > button {
+                background-color: #21262d !important;
+                border: 1px solid #30363d !important;
+                color: #c9d1d9 !important;
+                border-radius: 12px;
+            }
+            .stButton > button[kind="primary"] {
+                background: #238636 !important;
+                border: none !important;
+                color: white !important;
+            }
+            .stButton > button[kind="primary"]:hover {
+                background: #2ea043 !important;
+            }
+            
+            /* Select boxes */
+            .stSelectbox > div > div {
+                background-color: #161b22 !important;
+                border-color: #30363d !important;
+            }
+        </style>
+        """
+    else:
+        return """
+        <style>
+            /* Light mode - clean white background */
+            .stApp {
+                background-color: #ffffff !important;
+            }
+            
+            /* Force white background on all containers */
+            .main .block-container {
+                background-color: #ffffff !important;
+            }
+            
+            /* Streamlit header area */
+            header[data-testid="stHeader"] {
+                background-color: #ffffff !important;
+            }
+            
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            [data-testid="stSidebarNav"] li:first-child {display: none;}
+            
+            /* Light sidebar */
+            [data-testid="stSidebar"] {
+                background-color: #f8f9fa !important;
+            }
+            [data-testid="stSidebar"] * {
+                color: #333333 !important;
+            }
+            
+            /* Text colors - be more specific */
+            .stApp p, .stApp span, .stApp div, .stApp label { 
+                color: #333333 !important; 
+            }
+            .stApp h1, .stApp h2, .stApp h3, .stApp h4 {
+                color: #1a1a1a !important;
+            }
+            
+            /* App header */
+            .app-header {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                padding: 12px 0;
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #e0e0e0;
+                background-color: #ffffff !important;
+            }
+            .app-header-logo {
+                font-size: 1.8rem;
+            }
+            .app-header-title {
+                font-size: 1.4rem;
+                font-weight: 600;
+                color: #1a1a1a !important;
+                margin: 0;
+            }
+            
+            /* Inputs */
+            .stTextArea textarea, .stTextInput input {
+                background-color: #ffffff !important;
+                color: #333333 !important;
+                border: 1px solid #e0e0e0 !important;
+                border-radius: 12px;
+            }
+            .stTextArea textarea:focus, .stTextInput input:focus {
+                border-color: #10a37f !important;
+                box-shadow: 0 0 0 1px #10a37f !important;
+            }
+            
+            /* Buttons */
+            .stButton > button {
+                background-color: #f8f9fa !important;
+                border: 1px solid #e0e0e0 !important;
+                color: #333333 !important;
+                border-radius: 12px;
+            }
+            .stButton > button:hover {
+                background-color: #e9ecef !important;
+            }
+            .stButton > button[kind="primary"] {
+                background: #10a37f !important;
+                border: none !important;
+                color: white !important;
+            }
+            .stButton > button[kind="primary"]:hover {
+                background: #0d8a6b !important;
+            }
+            
+            /* Select boxes */
+            .stSelectbox > div > div {
+                background-color: #ffffff !important;
+                border-color: #e0e0e0 !important;
+                color: #333333 !important;
+            }
+            .stSelectbox label {
+                color: #333333 !important;
+            }
+            
+            /* Cards and containers - Light mode deck cards */
+            .deck-card {
+                background: #ffffff !important;
+                border: 1px solid #e0e0e0 !important;
+            }
+            .deck-card:hover {
+                border-color: #10a37f !important;
+                box-shadow: 0 4px 16px rgba(16,163,127,0.15) !important;
+            }
+            .deck-topic {
+                color: #1a1a1a !important;
+            }
+            .deck-meta {
+                color: #666666 !important;
+            }
+            .deck-badge {
+                background: #f0f0f0 !important;
+                color: #555555 !important;
+            }
+            
+            /* Slider and other controls */
+            .stSlider label, .stSelectbox label {
+                color: #333333 !important;
+            }
+        </style>
+        """
+
+
+def render_header():
+    """Render the app header with logo and title."""
+    import streamlit as st
+    st.markdown("""
+        <div class="app-header">
+            <span class="app-header-logo">🧠</span>
+            <span class="app-header-title">Smart FlashCards</span>
+        </div>
+    """, unsafe_allow_html=True)

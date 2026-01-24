@@ -5,7 +5,11 @@ Clean, ChatGPT-style interface for generating flashcards.
 
 import streamlit as st
 import os
+from dotenv import load_dotenv
 from database import init_database
+
+# Load .env file for local development
+load_dotenv()
 
 # App configuration
 st.set_page_config(
@@ -108,7 +112,7 @@ def validate_api_key(api_key: str) -> tuple[bool, str]:
 
 
 def check_password():
-    """Simple password check."""
+    """Simple password check. Auto-authenticates if APP_PASSWORD matches env."""
     correct_password = os.getenv("APP_PASSWORD", "")
     if not correct_password:
         try:
@@ -116,10 +120,18 @@ def check_password():
         except:
             correct_password = ""
     
+    # No password configured - allow access
     if not correct_password:
         return True
     
+    # Already authenticated
     if st.session_state.get("password_correct"):
+        return True
+    
+    # Auto-authenticate for local development if password is set in .env
+    env_password = os.getenv("APP_PASSWORD", "")
+    if env_password and env_password == correct_password and env_password != "your_secure_password_here":
+        st.session_state["password_correct"] = True
         return True
     
     st.markdown('<p class="main-title">🧠 Smart FlashCards</p>', unsafe_allow_html=True)
@@ -139,8 +151,16 @@ def check_password():
 
 
 def check_api_key():
-    """API key input with validation."""
+    """API key input with validation. Auto-loads from env for local dev."""
     if st.session_state.get("user_api_key") and st.session_state.get("api_key_validated"):
+        return True
+    
+    # Auto-load API key from environment for local development
+    env_api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if env_api_key and env_api_key.startswith("sk-ant-"):
+        st.session_state["user_api_key"] = env_api_key
+        st.session_state["user_spending_limit"] = float(os.getenv("SPENDING_LIMIT", "10.0"))
+        st.session_state["api_key_validated"] = True
         return True
     
     st.markdown('<p class="main-title">🧠 Smart FlashCards</p>', unsafe_allow_html=True)
